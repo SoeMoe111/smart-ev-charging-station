@@ -1,388 +1,650 @@
-// ================================
-// IoT SMART EV CHARGING STATION
-// Front-end Prototype Controller
-// ================================
+// ============================================
+// SMART EV CHARGING STATION - PREMIUM APP
+// ============================================
 
-// ---------- Mobile Menu ----------
-const menuBtn = document.getElementById("menuBtn");
-const nav = document.getElementById("nav");
+// ---------- PAGE NAVIGATION ----------
+const navTabs = [...document.querySelectorAll(".nav-tab")];
+const pages = [...document.querySelectorAll(".page")];
 
-if (menuBtn && nav) {
-  menuBtn.addEventListener("click", () => {
-    nav.classList.toggle("open");
+function showPage(pageId, updateHash = true) {
+  pages.forEach(page => {
+    page.classList.toggle("active-page", page.id === pageId);
   });
 
-  nav.querySelectorAll("a").forEach(link => {
-    link.addEventListener("click", () => {
-      nav.classList.remove("open");
-    });
+  navTabs.forEach(tab => {
+    tab.classList.toggle("active", tab.dataset.page === pageId);
+  });
+
+  if (updateHash) {
+    history.replaceState(null, "", "#" + pageId);
+  }
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth"
   });
 }
 
+navTabs.forEach(tab => {
+  tab.addEventListener("click", () => {
+    showPage(tab.dataset.page);
+  });
+});
 
-// ---------- Storage Helpers ----------
-function getData(key) {
+document.querySelectorAll("[data-go]").forEach(button => {
+  button.addEventListener("click", () => {
+    showPage(button.dataset.go);
+  });
+});
+
+// Open requested page from URL hash
+const initialPage = location.hash.replace("#", "");
+
+if (pages.some(page => page.id === initialPage)) {
+  showPage(initialPage, false);
+} else {
+  showPage("dashboard", false);
+}
+
+
+// ============================================
+// STORAGE HELPERS
+// ============================================
+
+function loadData(key, fallback = []) {
   try {
-    return JSON.parse(localStorage.getItem(key)) || [];
+    return JSON.parse(
+      localStorage.getItem(key) || JSON.stringify(fallback)
+    );
   } catch {
-    return [];
+    return fallback;
   }
 }
 
-function saveData(key, data) {
-  localStorage.setItem(key, JSON.stringify(data));
+function saveData(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 
-// ===================================
+// ============================================
 // BOOKING SYSTEM
-// ===================================
+// ============================================
 
-const bookingForm = document.getElementById("bookingForm");
-const bookingMsg = document.getElementById("bookingMsg");
-const bookingsBox = document.getElementById("bookings");
+let bookings = loadData("evBookings");
 
-function renderBookings() {
-  if (!bookingsBox) return;
+const bookingForm =
+  document.getElementById("bookingForm");
 
-  const bookings = getData("evBookings");
+const bookingMsg =
+  document.getElementById("bookingMsg");
 
-  if (bookings.length === 0) {
-    bookingsBox.innerHTML = `
-      <h3>Current bookings</h3>
-      <p>No charging reservations yet.</p>
+const slot1Bookings =
+  document.getElementById("slot1Bookings");
+
+const slot2Bookings =
+  document.getElementById("slot2Bookings");
+
+
+function renderSlotBookings(slotName, target) {
+
+  if (!target) return;
+
+  const list = bookings
+    .map((booking, index) => ({
+      ...booking,
+      originalIndex: index
+    }))
+    .filter(booking => booking.slot === slotName)
+    .sort((a, b) =>
+      `${a.date}T${a.time}`.localeCompare(
+        `${b.date}T${b.time}`
+      )
+    );
+
+  if (!list.length) {
+    target.innerHTML = `
+      <div class="empty-state">
+        No bookings saved on this device yet.
+      </div>
     `;
     return;
   }
 
-  bookingsBox.innerHTML = `
-    <h3>Current bookings</h3>
-    ${bookings.map((b, index) => `
-      <div style="
-        padding:12px 0;
-        border-bottom:1px solid #e5ecef;
-      ">
-        <strong>${b.slot}</strong>
-        <br>
-        ${b.driver} · ${b.plate}
-        <br>
-        <small>
-          ${b.date || "Date not set"} ·
-          ${b.time} ·
-          ${b.duration} min
-        </small>
-        <br>
-        <button
-          onclick="cancelBooking(${index})"
-          style="
-            margin-top:8px;
-            background:#d94b4b;
-            padding:7px 12px;
-          "
-        >
-          CANCEL
-        </button>
+  target.innerHTML = list.map(booking => `
+    <div class="booking-item">
+
+      <div>
+        <b>
+          ${escapeHtml(booking.date)}
+          ·
+          ${escapeHtml(booking.time)}
+        </b>
+
+        <span>
+          ${escapeHtml(booking.driver)}
+          ·
+          ${escapeHtml(booking.plate)}
+          ·
+          ${escapeHtml(booking.duration)} min
+        </span>
       </div>
-    `).join("")}
-  `;
+
+      <button
+        class="ghost-btn"
+        onclick="removeBooking(${booking.originalIndex})">
+        CANCEL
+      </button>
+
+    </div>
+  `).join("");
 }
 
-window.cancelBooking = function(index) {
-  const bookings = getData("evBookings");
+
+function renderBookings() {
+  renderSlotBookings(
+    "Slot 1",
+    slot1Bookings
+  );
+
+  renderSlotBookings(
+    "Slot 2",
+    slot2Bookings
+  );
+}
+
+
+window.removeBooking = function(index) {
 
   bookings.splice(index, 1);
 
-  saveData("evBookings", bookings);
+  saveData(
+    "evBookings",
+    bookings
+  );
 
   renderBookings();
-
-  if (bookingMsg) {
-    bookingMsg.innerHTML =
-      "<b>BOOKING CANCELLED</b> Reservation removed successfully.";
-  }
 };
 
 
 if (bookingForm) {
 
-  bookingForm.addEventListener("submit", function(e) {
+  bookingForm.addEventListener(
+    "submit",
+    event => {
 
-    e.preventDefault();
+      event.preventDefault();
 
-    const driver =
-      document.getElementById("driver")?.value.trim();
+      const data = {
+        driver:
+          document.getElementById("driver").value.trim(),
 
-    const plate =
-      document.getElementById("plate")?.value.trim();
+        plate:
+          document.getElementById("plate").value.trim(),
 
-    const uid =
-      document.getElementById("uid")?.value.trim();
+        uid:
+          document.getElementById("uid").value.trim(),
 
-    const date =
-      document.getElementById("date")?.value || "";
+        date:
+          document.getElementById("date").value,
 
-    const slot =
-      document.getElementById("slot")?.value || "Slot 1";
+        slot:
+          document.getElementById("slot").value,
 
-    const time =
-      document.getElementById("time")?.value;
+        time:
+          document.getElementById("time").value,
 
-    const duration =
-      Number(document.getElementById("duration")?.value || 60);
+        duration:
+          Number(
+            document.getElementById("duration").value
+          )
+      };
 
 
-    if (!driver || !plate || !time) {
+      const newStart =
+        new Date(
+          `${data.date}T${data.time}`
+        ).getTime();
 
-      bookingMsg.innerHTML =
-        "<b>ERROR</b> Please complete the required booking information.";
+      const newEnd =
+        newStart +
+        data.duration * 60000;
 
-      return;
+
+      const conflict =
+        bookings.some(existing => {
+
+          if (
+            existing.slot !== data.slot ||
+            existing.date !== data.date
+          ) {
+            return false;
+          }
+
+          const oldStart =
+            new Date(
+              `${existing.date}T${existing.time}`
+            ).getTime();
+
+          const oldEnd =
+            oldStart +
+            Number(existing.duration) *
+            60000;
+
+          return (
+            newStart < oldEnd &&
+            newEnd > oldStart
+          );
+        });
+
+
+      if (conflict) {
+
+        bookingMsg.className =
+          "form-message error";
+
+        bookingMsg.textContent =
+          "Conflict detected: this time overlaps an existing booking.";
+
+        return;
+      }
+
+
+      bookings.push(data);
+
+      saveData(
+        "evBookings",
+        bookings
+      );
+
+
+      bookingMsg.className =
+        "form-message ok";
+
+      bookingMsg.textContent =
+        "Booking confirmed successfully on this device.";
+
+
+      bookingForm.reset();
+
+      renderBookings();
     }
-
-
-    const bookings = getData("evBookings");
-
-    const newStart =
-      new Date(`2000-01-01T${time}:00`).getTime();
-
-    const newEnd =
-      newStart + duration * 60000;
-
-
-    const conflict = bookings.some(b => {
-
-      if (b.slot !== slot) return false;
-
-      if (date && b.date && b.date !== date) return false;
-
-      const oldStart =
-        new Date(`2000-01-01T${b.time}:00`).getTime();
-
-      const oldEnd =
-        oldStart + Number(b.duration) * 60000;
-
-      return newStart < oldEnd && newEnd > oldStart;
-    });
-
-
-    if (conflict) {
-
-      bookingMsg.innerHTML =
-        "<b>TIME CONFLICT</b> This charging slot is already reserved during the selected period.";
-
-      return;
-    }
-
-
-    bookings.push({
-      driver,
-      plate,
-      uid,
-      date,
-      slot,
-      time,
-      duration
-    });
-
-
-    saveData("evBookings", bookings);
-
-    bookingMsg.innerHTML =
-      `<b>BOOKING CONFIRMED</b> ${slot} reserved successfully for ${driver}.`;
-
-    bookingForm.reset();
-
-    renderBookings();
-  });
+  );
 }
 
 
-// ===================================
-// RFID REGISTRATION
-// ===================================
+const clearBookings =
+  document.getElementById("clearBookings");
+
+if (clearBookings) {
+
+  clearBookings.addEventListener(
+    "click",
+    () => {
+
+      if (
+        confirm(
+          "Clear all local bookings?"
+        )
+      ) {
+
+        bookings = [];
+
+        saveData(
+          "evBookings",
+          bookings
+        );
+
+        renderBookings();
+
+        if (bookingMsg) {
+          bookingMsg.textContent = "";
+        }
+      }
+    }
+  );
+}
+
+renderBookings();
+
+
+// ============================================
+// RFID SYSTEM
+// ============================================
+
+let rfidUsers =
+  loadData("rfUsers");
 
 const rfidForm =
   document.getElementById("rfidForm");
 
-const scanBtn =
-  document.getElementById("scanBtn");
+const rfidUsersList =
+  document.getElementById("rfidUsersList");
 
 const scanResult =
   document.getElementById("scanResult");
 
 
-if (rfidForm) {
+function renderUsers() {
 
-  rfidForm.addEventListener("submit", function(e) {
+  if (!rfidUsersList) return;
 
-    e.preventDefault();
+  if (!rfidUsers.length) {
 
-    const name =
-      document.getElementById("rfName")?.value.trim();
+    rfidUsersList.innerHTML = `
+      <div class="empty-state">
+        No RFID users registered on this device yet.
+      </div>
+    `;
 
-    const plate =
-      document.getElementById("rfPlate")?.value.trim();
-
-    const email =
-      document.getElementById("rfEmail")?.value.trim();
-
-    const uid =
-      document.getElementById("rfUid")?.value.trim().toUpperCase();
+    return;
+  }
 
 
-    if (!name || !plate || !uid) return;
+  rfidUsersList.innerHTML =
+    rfidUsers.map(
+      (user, index) => `
 
+      <div class="user-row">
 
-    const users =
-      getData("evRfidUsers");
+        <b>
+          ${escapeHtml(user.name)}
+        </b>
 
+        <span>
+          ${escapeHtml(user.plate)}
+        </span>
 
-    const exists =
-      users.some(user =>
-        user.uid === uid
-      );
+        <span>
+          ${escapeHtml(user.uid)}
+        </span>
 
+        <button
+          class="ghost-btn"
+          onclick="removeUser(${index})">
 
-    if (exists) {
+          REMOVE
 
-      alert("This RFID UID is already registered.");
+        </button>
 
-      return;
-    }
+      </div>
 
-
-    users.push({
-      name,
-      plate,
-      email,
-      uid,
-      status: "ACTIVE"
-    });
-
-
-    saveData(
-      "evRfidUsers",
-      users
-    );
-
-
-    alert(
-      "RFID user registered successfully."
-    );
-
-
-    rfidForm.reset();
-  });
+    `
+    ).join("");
 }
 
 
-// ===================================
-// RFID SCAN SIMULATION
-// ===================================
+window.removeUser = function(index) {
+
+  rfidUsers.splice(index, 1);
+
+  saveData(
+    "rfUsers",
+    rfidUsers
+  );
+
+  renderUsers();
+};
+
+
+if (rfidForm) {
+
+  rfidForm.addEventListener(
+    "submit",
+    event => {
+
+      event.preventDefault();
+
+      const user = {
+
+        name:
+          document
+          .getElementById("rfName")
+          .value
+          .trim(),
+
+        plate:
+          document
+          .getElementById("rfPlate")
+          .value
+          .trim(),
+
+        email:
+          document
+          .getElementById("rfEmail")
+          .value
+          .trim(),
+
+        uid:
+          document
+          .getElementById("rfUid")
+          .value
+          .trim()
+          .toUpperCase()
+
+      };
+
+
+      const existingIndex =
+        rfidUsers.findIndex(
+          item =>
+            item.uid === user.uid
+        );
+
+
+      if (existingIndex >= 0) {
+
+        rfidUsers[existingIndex] =
+          user;
+
+      } else {
+
+        rfidUsers.push(user);
+      }
+
+
+      saveData(
+        "rfUsers",
+        rfidUsers
+      );
+
+      renderUsers();
+
+      rfidForm.reset();
+
+
+      if (scanResult) {
+
+        scanResult.className =
+          "scan-result granted";
+
+        scanResult.textContent =
+          "USER REGISTERED";
+
+        setTimeout(() => {
+
+          scanResult.className =
+            "scan-result";
+
+          scanResult.textContent =
+            "WAITING FOR CARD";
+
+        }, 1500);
+      }
+    }
+  );
+}
+
+
+// ---------- RFID SCAN ----------
+
+const scanBtn =
+  document.getElementById("scanBtn");
+
 
 if (scanBtn) {
 
-  scanBtn.addEventListener("click", function() {
+  scanBtn.addEventListener(
+    "click",
+    () => {
 
-    const uid =
-      document.getElementById("scanUid")
-      ?.value.trim()
-      .toUpperCase();
+      const uid =
+        document
+        .getElementById("scanUid")
+        .value
+        .trim()
+        .toUpperCase();
 
 
-    if (!uid) {
+      const user =
+        rfidUsers.find(
+          item =>
+            item.uid === uid
+        );
 
-      scanResult.innerHTML =
-        "Enter an RFID UID first.";
 
-      return;
+      if (user) {
+
+        scanResult.className =
+          "scan-result granted";
+
+        scanResult.innerHTML =
+          `ACCESS GRANTED<br>${escapeHtml(user.name)} · ${escapeHtml(user.plate)}`;
+
+      } else {
+
+        scanResult.className =
+          "scan-result denied";
+
+        scanResult.textContent =
+          "ACCESS DENIED";
+      }
     }
+  );
+}
 
 
-    const users =
-      getData("evRfidUsers");
+const clearUsers =
+  document.getElementById("clearUsers");
 
 
-    const user =
-      users.find(u =>
-        u.uid === uid
+if (clearUsers) {
+
+  clearUsers.addEventListener(
+    "click",
+    () => {
+
+      if (
+        confirm(
+          "Clear all local RFID users?"
+        )
+      ) {
+
+        rfidUsers = [];
+
+        saveData(
+          "rfUsers",
+          rfidUsers
+        );
+
+        renderUsers();
+
+        if (scanResult) {
+
+          scanResult.className =
+            "scan-result";
+
+          scanResult.textContent =
+            "WAITING FOR CARD";
+        }
+      }
+    }
+  );
+}
+
+renderUsers();
+
+
+// ============================================
+// YANGON CHARGER MAP BUTTONS
+// ============================================
+
+document
+.querySelectorAll(".map-btn")
+.forEach(button => {
+
+  button.addEventListener(
+    "click",
+    () => {
+
+      const query =
+        encodeURIComponent(
+          button.dataset.map
+        );
+
+      window.open(
+        `https://www.google.com/maps/search/?api=1&query=${query}`,
+        "_blank",
+        "noopener"
       );
-
-
-    if (user) {
-
-      scanResult.innerHTML = `
-        <span style="
-          color:#087c52;
-          font-weight:700;
-        ">
-          ✓ ACCESS GRANTED
-        </span>
-        <br>
-        ${user.name}
-        <br>
-        Vehicle: ${user.plate}
-      `;
-
-    } else {
-
-      scanResult.innerHTML = `
-        <span style="
-          color:#c33;
-          font-weight:700;
-        ">
-          ✕ ACCESS DENIED
-        </span>
-        <br>
-        RFID UID not registered.
-      `;
     }
-  });
+  );
+});
+
+
+// ============================================
+// PRESENTATION FULL SCREEN
+// ============================================
+
+const fullscreenBtn =
+  document.getElementById("fullscreenBtn");
+
+
+if (fullscreenBtn) {
+
+  fullscreenBtn.addEventListener(
+    "click",
+    async () => {
+
+      try {
+
+        if (
+          !document.fullscreenElement
+        ) {
+
+          await document
+          .documentElement
+          .requestFullscreen();
+
+        } else {
+
+          await document
+          .exitFullscreen();
+        }
+
+      } catch {
+
+        alert(
+          "Full screen is not supported by this browser. You can add the website to your Home Screen for presentation mode."
+        );
+      }
+    }
+  );
 }
 
 
-// ===================================
-// DASHBOARD LIVE SIMULATION
-// ===================================
-
-function randomBetween(min, max, decimals = 2) {
-
-  return (
-    Math.random() * (max - min) + min
-  ).toFixed(decimals);
-}
-
-
-// Simulated ESP32 telemetry.
-// Later this section can be replaced
-// with actual ESP32/API data.
-
-setInterval(() => {
-
-  const cards =
-    document.querySelectorAll(".stats article strong");
-
-  if (cards.length >= 3) {
-
-    cards[0].textContent =
-      randomBetween(12.02, 12.12) + " V";
-
-    cards[1].textContent =
-      randomBetween(1.50, 1.75) + " A";
-
-    cards[2].textContent =
-      randomBetween(11.7, 12.6, 1) + " W";
-  }
-
-}, 3000);
-
-
-// ===================================
-// INITIALIZE
-// ===================================
-
-renderBookings();
+// ============================================
+// READY
+// ============================================
 
 console.log(
-  "IoT Smart EV Charging Station dashboard initialized."
+  "Smart EV Charging Station Premium UI loaded."
 );
