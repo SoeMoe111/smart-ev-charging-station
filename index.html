@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>IoT Smart EV Charging Station</title>
+  <meta name="description" content="Standalone Smart EV Charging Station project dashboard">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">⚡</div>
+    <div><strong>IOT <span>SMART EV</span></strong><small>CHARGING STATION</small></div>
+  </div>
+  <button id="menuBtn">MENU</button>
+  <nav id="nav">
+    <a href="#dashboard">Dashboard</a>
+    <a href="#booking">Booking</a>
+    <a href="#rfid">RFID access</a>
+    <a href="#chargers">Yangon chargers</a>
+    <a href="#team">Project team</a>
+    <a href="#present">Present</a>
+  </nav>
+</header>
+
+<main>
+<section id="dashboard" class="hero">
+  <p class="eyebrow">FIFTH YEAR ELECTRICAL ENGINEERING PROJECT</p>
+  <h1>IoT based Smart EV charging Station</h1>
+  <p>Reservation, RFID authentication, time-sliced power allocation, live monitoring and multi-layer protection in one low-voltage prototype.</p>
+  <div class="chips"><span>2 CHARGING SLOTS</span><span>ESP32 CONTROL</span><span>12 V DC PROTOTYPE</span></div>
+</section>
+
+<section class="section">
+  <div class="notice"><b>PROJECT UPDATE</b> Hardware telemetry is currently simulated while Slot 1 is under development.</div>
+  <div class="stats grid4">
+    <article><small>DC SUPPLY</small><strong>12.08 V</strong><span>Input stable</span></article>
+    <article><small>TOTAL CURRENT</small><strong>1.62 A</strong><span>Within station limit</span></article>
+    <article><small>ACTIVE POWER</small><strong>12.1 W</strong><span>One relay enabled</span></article>
+    <article><small>PROTECTION</small><strong>NORMAL</strong><span>BMS · fuse · E-stop</span></article>
+  </div>
+
+  <h2>Charging slots</h2>
+  <div class="grid2">
+    <article class="card">
+      <div class="badge green">CHARGING</div><h3>Slot 1</h3><div class="soc">43%</div>
+      <p>Pack: 2S2P Li-ion</p><p>Relay: ENABLE</p><p>Protection: NORMAL</p>
+      <div class="mini"><span>7.42 V</span><span>1.62 A</span><span>12.1 W</span><span>31.4 °C</span></div>
+    </article>
+    <article class="card">
+      <div class="badge amber">TIME-SLICE HOLD</div><h3>Slot 2</h3><div class="soc">67%</div>
+      <p>Pack: 2S2P Li-ion</p><p>Relay: HOLD</p><p>Protection: NORMAL</p>
+      <div class="mini"><span>7.78 V</span><span>0.00 A</span><span>0.0 W</span><span>30.1 °C</span></div>
+    </article>
+  </div>
+
+  <article class="card"><small>DYNAMIC POWER ALLOCATION</small><h3>10-second time-slice window</h3>
+    <p>Slot 1 receives 70% of each window; Slot 2 receives 30%.</p>
+    <div class="bar"><i style="width:70%"></i></div>
+  </article>
+
+  <h2>SOC and electrical measurements</h2>
+  <div class="grid4">
+    <article><small>STATE OF CHARGE</small><strong>43%</strong></article>
+    <article><small>PACK VOLTAGE</small><strong>7.42 V</strong></article>
+    <article><small>CHARGE CURRENT</small><strong>1.62 A</strong></article>
+    <article><small>PACK TEMPERATURE</small><strong>31.4 °C</strong></article>
+  </div>
+</section>
+
+<section id="booking" class="section alt">
+  <p class="eyebrow">RESERVATION SYSTEM</p><h2>Book a charging time</h2>
+  <form id="bookingForm" class="form card">
+    <input id="driver" placeholder="Driver name" required>
+    <input id="plate" placeholder="Vehicle plate" required>
+    <input id="uid" placeholder="RFID UID (optional)">
+    <input id="date" type="date" required>
+    <select id="slot"><option>Slot 1</option><option>Slot 2</option></select>
+    <input id="time" type="time" required>
+    <select id="duration"><option value="30">30 minutes</option><option value="60" selected>1 hour</option><option value="90">1.5 hours</option><option value="120">2 hours</option></select>
+    <button type="submit">CHECK CONFLICT & CONFIRM BOOKING</button>
+  </form>
+  <div id="bookingMsg" class="notice"></div>
+  <div id="bookings" class="card"></div>
+</section>
+
+<section id="rfid" class="section">
+  <p class="eyebrow">USER ACCESS PROTOTYPE</p><h2>Login & RFID registration</h2>
+  <div class="grid2">
+    <form id="rfidForm" class="card form">
+      <h3>RFID user registration</h3>
+      <input id="rfName" placeholder="Full name" required>
+      <input id="rfPlate" placeholder="Vehicle plate" required>
+      <input id="rfEmail" placeholder="Email (optional)">
+      <input id="rfUid" placeholder="RFID UID" required>
+      <button>REGISTER PENDING RFID USER</button>
+    </form>
+    <div class="card">
+      <h3>RFID scan terminal</h3>
+      <input id="scanUid" placeholder="Registered UID">
+      <button id="scanBtn">SIMULATE RFID SCAN</button>
+      <p id="scanResult"></p>
+    </div>
+  </div>
+</section>
+
+<section id="chargers" class="section alt">
+  <p class="eyebrow">PUBLIC EV INFORMATION · YANGON</p><h2>Yangon EV charging station guide</h2>
+  <div class="rate card"><div><small>PASSENGER EV / TAXI</small><strong>K700/kWh</strong></div><div><small>PRIVATE CAR</small><strong>K750/kWh</strong></div></div>
+  <div class="grid2">
+    <article class="card"><b>01 Yangon Central Railway Station EV Charging Station</b><p>Mingalar Taung Nyunt</p></article>
+    <article class="card"><b>02 Thiri Mingalar Market EV Charging Station</b><p>Hlaing</p></article>
+    <article class="card"><b>03 Dagon Ayar Highway Bus Terminal Charging Location</b><p>Hlaing Tharyar</p></article>
+    <article class="card"><b>04 Thakin Mya Park Charging Location</b><p>Ahlone</p></article>
+    <article class="card"><b>05 Sandisolar Solar EV Charging Station</b><p>Mayangone</p></article>
+    <article class="card"><b>06 Max Energy – Shwe Pyi Thar</b><p>Shwe Pyi Thar</p></article>
+    <article class="card"><b>07 PT Power – Thaketa</b><p>Thaketa</p></article>
+    <article class="card"><b>08 Royal Victory Service</b><p>Mingalardon</p></article>
+  </div>
+</section>
+
+<section id="team" class="section">
+  <p class="eyebrow">PRESENTED BY · GROUP I</p><h2>Meet the project team</h2>
+  <div class="card">
+    <h3>LIST OF MEMBERS</h3>
+    <table>
+      <thead><tr><th>No.</th><th>Roll No.</th><th>Name</th><th>Role</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>V EP - 2</td><td>Ma Myint Zu Khin</td><td>Member</td></tr>
+        <tr><td>2</td><td>V EP - 3</td><td>Ma Thin Lae Lae Hlaing</td><td>Member</td></tr>
+        <tr class="leader"><td>3</td><td>V EP - 5</td><td>Mg Soe Moe</td><td>Group Leader</td></tr>
+        <tr><td>4</td><td>V EP - 13</td><td>Ma Phoo Than Thar Khin</td><td>Member</td></tr>
+        <tr><td>5</td><td>V EP - 14</td><td>Mg Kyaw Zayar Min</td><td>Member</td></tr>
+        <tr><td>6</td><td>V EP - 17</td><td>Ma Hsu Lae Phyu</td><td>Member</td></tr>
+        <tr><td>7</td><td>V EP - 19</td><td>Ma Mya Thin Kyu</td><td>Member</td></tr>
+        <tr><td>8</td><td>V EP - 21</td><td>Mg Bhone Pyae Khant</td><td>Member</td></tr>
+        <tr><td>9</td><td>V EP - 27</td><td>Mg Kaung Htet</td><td>Member</td></tr>
+        <tr><td>10</td><td>V EP - 30</td><td>Mg Thet Paing Aung</td><td>Member</td></tr>
+        <tr><td>11</td><td>V EP - 33</td><td>Mg Kyaw Mwo Win</td><td>Member</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="present" class="hero">
+  <p class="eyebrow">CLEAN PRESENTATION MODE</p><h2>Present without the browser bar</h2>
+  <p>Install this site to the Home Screen from your browser for a clean standalone display.</p>
+</section>
+</main>
+
+<footer>IOT SMART EV · Fifth Year Electrical Engineering Prototype</footer>
+<script src="app.js"></script>
+</body>
+</html>
