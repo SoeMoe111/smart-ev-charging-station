@@ -1,5 +1,8 @@
 import {
   connectFirebase,
+  subscribeAuthState,
+  signInAdmin,
+  signOutAdmin,
   subscribeBookings,
   createBooking,
   deleteBooking,
@@ -17,11 +20,20 @@ import {
 // SMART EV CHARGING STATION - FIREBASE APP
 // ============================================
 
+let firebaseMode = false;
+let currentAuthUid = "";
+let adminMode = false;
+let unsubscribeRfidUsers = null;
+
 // ---------- PAGE NAVIGATION ----------
 const navTabs = [...document.querySelectorAll(".nav-tab")];
 const pages = [...document.querySelectorAll(".page")];
 
 function showPage(pageId, updateHash = true) {
+  if (pageId === "rfid" && !adminMode) {
+    pageId = "dashboard";
+  }
+
   pages.forEach(page => {
     page.classList.toggle("active-page", page.id === pageId);
   });
@@ -80,8 +92,6 @@ function saveData(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
-let firebaseMode = false;
-
 function setCloudStatus(mode, message) {
   const pill = document.getElementById("cloudStatus");
   const banner = document.getElementById("projectModeText");
@@ -116,6 +126,199 @@ function escapeHtml(value) {
 
 
 // ============================================
+// ADMIN AUTHENTICATION
+// ============================================
+
+const adminAccessBtn =
+  document.getElementById("adminAccessBtn");
+
+const adminDialog =
+  document.getElementById("adminDialog");
+
+const adminCloseBtn =
+  document.getElementById("adminCloseBtn");
+
+const adminLoginForm =
+  document.getElementById("adminLoginForm");
+
+const adminLoginFields =
+  document.getElementById("adminLoginFields");
+
+const adminSessionPanel =
+  document.getElementById("adminSessionPanel");
+
+const adminSessionEmail =
+  document.getElementById("adminSessionEmail");
+
+const adminAuthMessage =
+  document.getElementById("adminAuthMessage");
+
+const adminLogoutBtn =
+  document.getElementById("adminLogoutBtn");
+
+function setAdminMessage(message = "", mode = "") {
+  if (!adminAuthMessage) return;
+
+  adminAuthMessage.textContent = message;
+  adminAuthMessage.className = mode
+    ? `form-message ${mode}`
+    : "form-message";
+}
+
+function openAdminDialog() {
+  if (!adminDialog) return;
+
+  setAdminMessage();
+
+  if (typeof adminDialog.showModal === "function") {
+    adminDialog.showModal();
+  } else {
+    adminDialog.setAttribute("open", "");
+  }
+}
+
+function closeAdminDialog() {
+  if (!adminDialog) return;
+
+  if (typeof adminDialog.close === "function") {
+    adminDialog.close();
+  } else {
+    adminDialog.removeAttribute("open");
+  }
+}
+
+function stopRfidSync() {
+  if (unsubscribeRfidUsers) {
+    unsubscribeRfidUsers();
+    unsubscribeRfidUsers = null;
+  }
+}
+
+function startRfidSync() {
+  if (
+    !firebaseMode ||
+    !adminMode ||
+    unsubscribeRfidUsers
+  ) {
+    return;
+  }
+
+  unsubscribeRfidUsers = subscribeRfidUsers(
+    cloudUsers => {
+      rfidUsers = cloudUsers;
+      renderUsers();
+    },
+    error => {
+      console.error("Admin RFID sync failed", error);
+      stopRfidSync();
+    }
+  );
+}
+
+function applyAuthState(state = {}) {
+  currentAuthUid = state.uid || "";
+  adminMode = Boolean(state.isAdmin);
+
+  document
+    .querySelectorAll(".admin-only")
+    .forEach(element => {
+      element.classList.toggle("hidden", !adminMode);
+    });
+
+  const rfidPage = document.getElementById("rfid");
+  rfidPage?.classList.toggle("admin-enabled", adminMode);
+
+  if (adminAccessBtn) {
+    adminAccessBtn.textContent = adminMode
+      ? "ADMIN ACTIVE"
+      : "ADMIN LOGIN";
+    adminAccessBtn.dataset.admin = String(adminMode);
+  }
+
+  adminLoginFields?.classList.toggle("hidden", adminMode);
+  adminSessionPanel?.classList.toggle("hidden", !adminMode);
+
+  if (adminSessionEmail) {
+    adminSessionEmail.textContent = state.email || "Project owner";
+  }
+
+  if (adminMode) {
+    startRfidSync();
+  } else {
+    stopRfidSync();
+    rfidUsers = [];
+    localStorage.removeItem("rfUsers");
+    renderUsers();
+
+    if (location.hash === "#rfid") {
+      showPage("dashboard");
+    }
+  }
+
+  renderBookings();
+}
+
+adminAccessBtn?.addEventListener("click", openAdminDialog);
+adminCloseBtn?.addEventListener("click", closeAdminDialog);
+
+adminDialog?.addEventListener("click", event => {
+  if (event.target === adminDialog) {
+    closeAdminDialog();
+  }
+});
+
+adminLoginForm?.addEventListener("submit", async event => {
+  event.preventDefault();
+
+  if (!firebaseMode) {
+    setAdminMessage("Firebase connection is required.", "error");
+    return;
+  }
+
+  const email = document.getElementById("adminEmail").value;
+  const passwordInput = document.getElementById("adminPassword");
+  const submitButton = document.getElementById("adminLoginSubmit");
+
+  submitButton.disabled = true;
+  setAdminMessage("Signing in...");
+
+  try {
+    await signInAdmin(email, passwordInput.value);
+    passwordInput.value = "";
+    setAdminMessage("Admin access granted.", "ok");
+    setTimeout(closeAdminDialog, 500);
+  } catch (error) {
+    console.error("Admin sign-in failed", error);
+    passwordInput.value = "";
+    setAdminMessage(
+      error.message.includes("not authorized")
+        ? "This account is not the project owner."
+        : "Email or password is incorrect.",
+      "error"
+    );
+  } finally {
+    submitButton.disabled = false;
+  }
+});
+
+adminLogoutBtn?.addEventListener("click", async () => {
+  adminLogoutBtn.disabled = true;
+  setAdminMessage("Signing out...");
+
+  try {
+    await signOutAdmin();
+    setAdminMessage("Admin signed out.", "ok");
+    setTimeout(closeAdminDialog, 400);
+  } catch (error) {
+    console.error("Admin sign-out failed", error);
+    setAdminMessage("Sign out failed. Try again.", "error");
+  } finally {
+    adminLogoutBtn.disabled = false;
+  }
+});
+
+
+// ============================================
 // BOOKING SYSTEM
 // ============================================
 
@@ -132,6 +335,15 @@ const slot1Bookings =
 
 const slot2Bookings =
   document.getElementById("slot2Bookings");
+
+function canManageBooking(booking) {
+  return !firebaseMode ||
+    adminMode ||
+    (
+      currentAuthUid &&
+      booking.createdBy === currentAuthUid
+    );
+}
 
 
 function renderSlotBookings(slotName, target) {
@@ -178,11 +390,13 @@ function renderSlotBookings(slotName, target) {
         </span>
       </div>
 
-      <button
-        class="ghost-btn"
-        onclick="removeBooking(${booking.originalIndex})">
-        CANCEL
-      </button>
+      ${canManageBooking(booking) ? `
+        <button
+          class="ghost-btn"
+          onclick="removeBooking(${booking.originalIndex})">
+          CANCEL
+        </button>
+      ` : ""}
 
     </div>
   `).join("");
@@ -206,6 +420,11 @@ window.removeBooking = async function(index) {
   const booking = bookings[index];
 
   if (!booking) return;
+
+  if (!canManageBooking(booking)) {
+    alert("Only the booking owner or project admin can cancel this booking.");
+    return;
+  }
 
   try {
     if (firebaseMode) {
@@ -345,6 +564,11 @@ if (clearBookings) {
     "click",
     async () => {
 
+      if (firebaseMode && !adminMode) {
+        alert("Admin sign-in is required to clear all bookings.");
+        return;
+      }
+
       if (
         confirm(
           "Clear all charging bookings?"
@@ -443,6 +667,11 @@ function renderUsers() {
 
 
 window.removeUser = async function(index) {
+  if (!adminMode) {
+    alert("Admin sign-in is required to manage RFID users.");
+    return;
+  }
+
   const user = rfidUsers[index];
 
   if (!user) return;
@@ -469,6 +698,10 @@ if (rfidForm) {
     async event => {
 
       event.preventDefault();
+
+      if (!adminMode) {
+        return;
+      }
 
       const user = {
 
@@ -569,6 +802,10 @@ if (scanBtn) {
     "click",
     async () => {
 
+      if (!adminMode) {
+        return;
+      }
+
       const uid = normalizeUid(
         document.getElementById("scanUid").value
       );
@@ -631,6 +868,10 @@ if (clearUsers) {
   clearUsers.addEventListener(
     "click",
     async () => {
+
+      if (!adminMode) {
+        return;
+      }
 
       if (
         confirm(
@@ -811,6 +1052,16 @@ async function startDataSync() {
     firebaseMode = true;
     setCloudStatus("cloud", "FIREBASE LIVE");
 
+    applyAuthState(result);
+
+    subscribeAuthState(
+      state => applyAuthState(state),
+      error => {
+        console.error("Authentication state failed", error);
+        applyAuthState({});
+      }
+    );
+
     subscribeBookings(
       cloudBookings => {
         bookings = cloudBookings;
@@ -819,18 +1070,6 @@ async function startDataSync() {
       },
       error => {
         console.error("Booking sync failed", error);
-        setCloudStatus("error", "SYNC ERROR");
-      }
-    );
-
-    subscribeRfidUsers(
-      cloudUsers => {
-        rfidUsers = cloudUsers;
-        saveData("rfUsers", rfidUsers);
-        renderUsers();
-      },
-      error => {
-        console.error("RFID sync failed", error);
         setCloudStatus("error", "SYNC ERROR");
       }
     );

@@ -1,17 +1,116 @@
 {
   "rules": {
-    ".read": "auth != null",
-    ".write": "auth != null",
+    ".read": false,
+    ".write": false,
     "bookings": {
-      ".indexOn": ["slot", "date", "uid", "status"]
+      ".read": "auth != null",
+      ".write": "auth != null && auth.uid === 'fM6p0sQzQbaqKAmuQFGA6mNolJU2'",
+      ".indexOn": ["slot", "date", "uid", "status"],
+      "$bookingId": {
+        ".write": "auth != null && (auth.uid === 'fM6p0sQzQbaqKAmuQFGA6mNolJU2' || (!data.exists() && newData.exists() && newData.child('createdBy').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('createdBy').val() === auth.uid))",
+        ".validate": "newData.hasChildren(['driver', 'plate', 'uid', 'date', 'slot', 'time', 'duration', 'createdAt', 'createdBy', 'status'])",
+        "driver": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+        },
+        "plate": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30"
+        },
+        "uid": {
+          ".validate": "newData.isString() && newData.val().length <= 30"
+        },
+        "date": {
+          ".validate": "newData.isString() && newData.val().length === 10"
+        },
+        "slot": {
+          ".validate": "newData.val() === 'Slot 1' || newData.val() === 'Slot 2'"
+        },
+        "time": {
+          ".validate": "newData.isString() && newData.val().length === 5"
+        },
+        "duration": {
+          ".validate": "newData.isNumber() && newData.val() >= 15 && newData.val() <= 240"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "createdBy": {
+          ".validate": "newData.isString() && newData.val().length > 0"
+        },
+        "status": {
+          ".validate": "newData.val() === 'confirmed'"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
     },
     "rfidUsers": {
-      ".indexOn": ["uid", "active"]
+      ".read": "auth != null && auth.uid === 'fM6p0sQzQbaqKAmuQFGA6mNolJU2'",
+      ".write": "auth != null && auth.uid === 'fM6p0sQzQbaqKAmuQFGA6mNolJU2'",
+      ".indexOn": ["uid", "active"],
+      "$userId": {
+        ".validate": "newData.hasChildren(['name', 'plate', 'uid', 'active', 'updatedAt', 'updatedBy'])",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+        },
+        "plate": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30"
+        },
+        "email": {
+          ".validate": "newData.isString() && newData.val().length <= 120"
+        },
+        "uid": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30"
+        },
+        "active": {
+          ".validate": "newData.isBoolean()"
+        },
+        "updatedAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "updatedBy": {
+          ".validate": "newData.val() === auth.uid"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
     },
     "accessEvents": {
-      ".indexOn": ["timestamp", "uid", "granted"]
+      ".read": "auth != null && auth.uid === 'fM6p0sQzQbaqKAmuQFGA6mNolJU2'",
+      ".write": "auth != null && auth.uid === 'fM6p0sQzQbaqKAmuQFGA6mNolJU2'",
+      ".indexOn": ["timestamp", "uid", "granted"],
+      "$eventId": {
+        ".validate": "newData.hasChildren(['uid', 'granted', 'source', 'timestamp', 'createdBy'])",
+        "uid": {
+          ".validate": "newData.isString() && newData.val().length <= 30"
+        },
+        "granted": {
+          ".validate": "newData.isBoolean()"
+        },
+        "userName": {
+          ".validate": "newData.isString() && newData.val().length <= 80"
+        },
+        "plate": {
+          ".validate": "newData.isString() && newData.val().length <= 30"
+        },
+        "source": {
+          ".validate": "newData.isString() && newData.val().length <= 30"
+        },
+        "timestamp": {
+          ".validate": "newData.isNumber()"
+        },
+        "createdBy": {
+          ".validate": "newData.val() === auth.uid"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
     },
     "stations": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.uid === 'fM6p0sQzQbaqKAmuQFGA6mNolJU2'",
       ".indexOn": ["updatedAt"]
     }
   }

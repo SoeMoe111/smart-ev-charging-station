@@ -37,6 +37,10 @@ button{
   cursor:pointer;
 }
 
+.hidden{
+  display:none!important;
+}
+
 /* ===========================
    HEADER
 =========================== */
@@ -120,6 +124,23 @@ button{
 .system-pill[data-mode="error"] .pulse{
   background:#ff5b6e;
   box-shadow:0 0 0 5px rgba(255,91,110,.12);
+}
+
+.admin-access-btn{
+  border:1px solid #31506a;
+  background:transparent;
+  color:#d9e7ed;
+  border-radius:99px;
+  padding:7px 11px;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.7px;
+}
+
+.admin-access-btn[data-admin="true"]{
+  border-color:var(--green);
+  background:rgba(29,204,138,.13);
+  color:#7bf0c2;
 }
 
 /* ===========================
@@ -989,6 +1010,80 @@ button{
 }
 
 /* ===========================
+   ADMIN AUTHENTICATION
+=========================== */
+
+.admin-only-page:not(.admin-enabled){
+  display:none!important;
+}
+
+.admin-dialog{
+  width:min(92vw,460px);
+  border:0;
+  border-radius:18px;
+  padding:22px;
+  color:var(--ink);
+  box-shadow:0 28px 90px rgba(3,16,28,.35);
+}
+
+.admin-dialog::backdrop{
+  background:rgba(3,16,28,.68);
+  backdrop-filter:blur(3px);
+}
+
+.admin-dialog-head{
+  display:flex;
+  align-items:start;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:16px;
+}
+
+.admin-dialog-head h2{
+  margin:0;
+}
+
+.dialog-close{
+  display:grid;
+  place-items:center;
+  width:34px;
+  height:34px;
+  border:1px solid var(--border);
+  border-radius:50%;
+  background:#f5f8f9;
+  color:#425565;
+  font-size:21px;
+}
+
+.admin-login-form{
+  margin:0;
+}
+
+.admin-session{
+  display:grid;
+  gap:9px;
+  text-align:center;
+}
+
+.admin-session>span:not(.admin-shield){
+  color:var(--muted);
+  font-size:12px;
+}
+
+.admin-shield{
+  display:grid;
+  place-items:center;
+  width:54px;
+  height:54px;
+  margin:0 auto 4px;
+  border-radius:50%;
+  background:#e2f8ef;
+  color:#087e56;
+  font-size:24px;
+  font-weight:900;
+}
+
+/* ===========================
    YANGON CHARGERS
 =========================== */
 
@@ -1241,6 +1336,10 @@ button{
 
   .system-pill{
     display:none;
+  }
+
+  .admin-access-btn{
+    margin-left:auto;
   }
 
   .hero,

@@ -20,12 +20,15 @@
     <div id="cloudStatus" class="system-pill" data-mode="starting">
       <span class="pulse"></span> CONNECTING
     </div>
+    <button id="adminAccessBtn" class="admin-access-btn" type="button">
+      ADMIN LOGIN
+    </button>
   </div>
 
   <nav class="top-nav" aria-label="Main navigation">
     <button class="nav-tab active" data-page="dashboard">Dashboard</button>
     <button class="nav-tab" data-page="booking">Booking</button>
-    <button class="nav-tab" data-page="rfid">RFID Access</button>
+    <button class="nav-tab admin-only hidden" data-page="rfid">RFID Access</button>
     <button class="nav-tab" data-page="chargers">Yangon Chargers</button>
     <button class="nav-tab" data-page="team">Project Team</button>
     <button class="nav-tab" data-page="present">Present</button>
@@ -388,7 +391,7 @@
         <h2>Charging schedule</h2>
       </div>
 
-      <button id="clearBookings" class="ghost-btn">
+      <button id="clearBookings" class="ghost-btn admin-only hidden">
         CLEAR BOOKINGS
       </button>
 
@@ -432,7 +435,7 @@
 
 </section>
 
-<section id="rfid" class="page">
+<section id="rfid" class="page admin-only-page">
 
   <div class="page-hero">
 
@@ -879,6 +882,52 @@
 
 </main>
 
+<dialog id="adminDialog" class="admin-dialog">
+
+  <div class="admin-dialog-head">
+    <div>
+      <p class="section-kicker">PROJECT OWNER ACCESS</p>
+      <h2>Admin sign in</h2>
+    </div>
+
+    <button id="adminCloseBtn" class="dialog-close" type="button" aria-label="Close">
+      ×
+    </button>
+  </div>
+
+  <form id="adminLoginForm" class="admin-login-form">
+
+    <div id="adminLoginFields" class="stack-form">
+      <label>
+        Admin Email
+        <input id="adminEmail" type="email" autocomplete="username" required>
+      </label>
+
+      <label>
+        Password
+        <input id="adminPassword" type="password" autocomplete="current-password" required>
+      </label>
+
+      <button id="adminLoginSubmit" class="primary-btn wide" type="submit">
+        SIGN IN AS ADMIN
+      </button>
+    </div>
+
+    <div id="adminSessionPanel" class="admin-session hidden">
+      <span class="admin-shield">✓</span>
+      <b>OWNER SESSION ACTIVE</b>
+      <span id="adminSessionEmail"></span>
+      <button id="adminLogoutBtn" class="secondary-btn wide" type="button">
+        SIGN OUT
+      </button>
+    </div>
+
+    <div id="adminAuthMessage" class="form-message" aria-live="polite"></div>
+
+  </form>
+
+</dialog>
+
 <footer class="site-footer">
 
   <div>
@@ -895,4 +944,4 @@
 <script type="module" src="app.js"></script>
 
 </body>
-          </html>
+</html>
