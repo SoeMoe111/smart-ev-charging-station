@@ -1,0 +1,18 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+    "bookings": {
+      ".indexOn": ["slot", "date", "uid", "status"]
+    },
+    "rfidUsers": {
+      ".indexOn": ["uid", "active"]
+    },
+    "accessEvents": {
+      ".indexOn": ["timestamp", "uid", "granted"]
+    },
+    "stations": {
+      ".indexOn": ["updatedAt"]
+    }
+  }
+}

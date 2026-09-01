@@ -17,7 +17,9 @@
       <div class="brand-title">IOT <span>SMART EV</span></div>
       <div class="brand-subtitle">CHARGING STATION</div>
     </div>
-    <div class="system-pill"><span class="pulse"></span> SYSTEM ONLINE</div>
+    <div id="cloudStatus" class="system-pill" data-mode="starting">
+      <span class="pulse"></span> CONNECTING
+    </div>
   </div>
 
   <nav class="top-nav" aria-label="Main navigation">
@@ -55,9 +57,9 @@
     <div class="status-banner">
       <div>
         <b>PROJECT UPDATE</b>
-        <p>Hardware telemetry is currently simulated while Slot 1 is under development.</p>
+        <p id="projectModeText">Connecting the interface to its data source.</p>
       </div>
-      <span class="status-tag">SIMULATION MODE</span>
+      <span id="projectModeTag" class="status-tag">STARTING</span>
     </div>
 
     <div class="metric-grid">
@@ -66,7 +68,7 @@
         <div class="metric-icon">⚡</div>
         <div>
           <small>DC SUPPLY</small>
-          <strong>12.08 V</strong>
+          <strong id="stationSupply">-- V</strong>
           <span>Input stable</span>
         </div>
       </article>
@@ -75,7 +77,7 @@
         <div class="metric-icon">↯</div>
         <div>
           <small>TOTAL CURRENT</small>
-          <strong>1.62 A</strong>
+          <strong id="stationCurrent">-- A</strong>
           <span>Within station limit</span>
         </div>
       </article>
@@ -84,7 +86,7 @@
         <div class="metric-icon">◉</div>
         <div>
           <small>ACTIVE POWER</small>
-          <strong>12.1 W</strong>
+          <strong id="stationPower">-- W</strong>
           <span>One relay enabled</span>
         </div>
       </article>
@@ -93,7 +95,7 @@
         <div class="metric-icon">🛡</div>
         <div>
           <small>PROTECTION</small>
-          <strong class="good">NORMAL</strong>
+          <strong id="stationProtection" class="good">WAITING</strong>
           <span>BMS · fuse · E-stop</span>
         </div>
       </article>
@@ -114,43 +116,43 @@
 
     <div class="slot-grid">
 
-      <article class="slot-card charging">
+      <article id="slot1Card" class="slot-card hold">
 
         <div class="slot-top">
           <div>
             <span class="slot-label">SLOT 1</span>
             <h3>Vehicle Battery A</h3>
           </div>
-          <span class="badge badge-green">CHARGING</span>
+          <span id="slot1Status" class="badge badge-amber">WAITING FOR DATA</span>
         </div>
 
         <div class="soc-row">
 
-          <div class="soc-ring" style="--p:43">
+          <div id="slot1SocRing" class="soc-ring" style="--p:0">
             <div>
-              <b>43%</b>
+              <b id="slot1Soc">--%</b>
               <span>SOC</span>
             </div>
           </div>
 
           <div class="slot-details">
             <p><span>Pack</span><b>2S2P Li-ion</b></p>
-            <p><span>Relay</span><b class="good">ENABLE</b></p>
-            <p><span>Protection</span><b class="good">NORMAL</b></p>
+            <p><span>Relay</span><b id="slot1Relay">--</b></p>
+            <p><span>Protection</span><b id="slot1Protection">--</b></p>
           </div>
 
         </div>
 
         <div class="reading-grid">
-          <div><small>VOLTAGE</small><strong>7.42 V</strong></div>
-          <div><small>CURRENT</small><strong>1.62 A</strong></div>
-          <div><small>POWER</small><strong>12.1 W</strong></div>
-          <div><small>TEMP</small><strong>31.4 °C</strong></div>
+          <div><small>VOLTAGE</small><strong id="slot1Voltage">-- V</strong></div>
+          <div><small>CURRENT</small><strong id="slot1Current">-- A</strong></div>
+          <div><small>POWER</small><strong id="slot1Power">-- W</strong></div>
+          <div><small>TEMP</small><strong id="slot1Temperature">-- °C</strong></div>
         </div>
 
       </article>
 
-      <article class="slot-card hold">
+      <article id="slot2Card" class="slot-card hold">
 
         <div class="slot-top">
           <div>
@@ -158,31 +160,31 @@
             <h3>Vehicle Battery B</h3>
           </div>
 
-          <span class="badge badge-amber">TIME-SLICE HOLD</span>
+          <span id="slot2Status" class="badge badge-amber">WAITING FOR DATA</span>
         </div>
 
         <div class="soc-row">
 
-          <div class="soc-ring amber-ring" style="--p:67">
+          <div id="slot2SocRing" class="soc-ring amber-ring" style="--p:0">
             <div>
-              <b>67%</b>
+              <b id="slot2Soc">--%</b>
               <span>SOC</span>
             </div>
           </div>
 
           <div class="slot-details">
             <p><span>Pack</span><b>2S2P Li-ion</b></p>
-            <p><span>Relay</span><b class="warn">HOLD</b></p>
-            <p><span>Protection</span><b class="good">NORMAL</b></p>
+            <p><span>Relay</span><b id="slot2Relay">--</b></p>
+            <p><span>Protection</span><b id="slot2Protection">--</b></p>
           </div>
 
         </div>
 
         <div class="reading-grid">
-          <div><small>VOLTAGE</small><strong>7.78 V</strong></div>
-          <div><small>CURRENT</small><strong>0.00 A</strong></div>
-          <div><small>POWER</small><strong>0.0 W</strong></div>
-          <div><small>TEMP</small><strong>30.1 °C</strong></div>
+          <div><small>VOLTAGE</small><strong id="slot2Voltage">-- V</strong></div>
+          <div><small>CURRENT</small><strong id="slot2Current">-- A</strong></div>
+          <div><small>POWER</small><strong id="slot2Power">-- W</strong></div>
+          <div><small>TEMP</small><strong id="slot2Temperature">-- °C</strong></div>
         </div>
 
       </article>
@@ -251,25 +253,25 @@
     <div class="measurement-grid">
       <article>
         <small>STATE OF CHARGE</small>
-        <strong>43%</strong>
+        <strong id="telemetrySoc">--%</strong>
         <span>Estimated SOC</span>
       </article>
 
       <article>
         <small>PACK VOLTAGE</small>
-        <strong>7.42 V</strong>
+        <strong id="telemetryVoltage">-- V</strong>
         <span>INA219 reading</span>
       </article>
 
       <article>
         <small>CHARGE CURRENT</small>
-        <strong>1.62 A</strong>
+        <strong id="telemetryCurrent">-- A</strong>
         <span>Charging active</span>
       </article>
 
       <article>
         <small>PACK TEMPERATURE</small>
-        <strong>31.4 °C</strong>
+        <strong id="telemetryTemperature">-- °C</strong>
         <span>Within normal range</span>
       </article>
     </div>
@@ -367,12 +369,12 @@
 
         <ol>
           <li>Select your preferred slot and start time.</li>
-          <li>The website checks saved reservations on this device.</li>
+          <li>The website checks the shared Firebase reservation calendar.</li>
           <li>Overlapping bookings are rejected automatically.</li>
         </ol>
 
         <div class="note-box">
-          Shared cloud calendar can be connected later without changing this page design.
+          Firebase synchronizes bookings across phones, laptops and the future ESP32 station bridge.
         </div>
 
       </aside>
@@ -387,7 +389,7 @@
       </div>
 
       <button id="clearBookings" class="ghost-btn">
-        CLEAR LOCAL BOOKINGS
+        CLEAR BOOKINGS
       </button>
 
     </div>
@@ -551,11 +553,11 @@
 
         <div>
           <p class="section-kicker">REGISTERED USERS</p>
-          <h3>Local RFID user list</h3>
+          <h3>Shared RFID user list</h3>
         </div>
 
         <button id="clearUsers" class="ghost-btn">
-          CLEAR LOCAL USERS
+          CLEAR RFID USERS
         </button>
 
       </div>
@@ -890,7 +892,7 @@
 
 </footer>
 
-<script src="app.js"></script>
+<script type="module" src="app.js"></script>
 
 </body>
           </html>

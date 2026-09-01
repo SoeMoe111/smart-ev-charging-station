@@ -111,6 +111,17 @@ button{
   box-shadow:0 0 0 5px rgba(29,204,138,.12);
 }
 
+.system-pill[data-mode="local"] .pulse,
+.system-pill[data-mode="starting"] .pulse{
+  background:var(--amber);
+  box-shadow:0 0 0 5px rgba(255,184,77,.12);
+}
+
+.system-pill[data-mode="error"] .pulse{
+  background:#ff5b6e;
+  box-shadow:0 0 0 5px rgba(255,91,110,.12);
+}
+
 /* ===========================
    TOP NAVIGATION
 =========================== */
