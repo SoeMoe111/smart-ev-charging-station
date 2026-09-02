@@ -790,7 +790,81 @@ if (rfidForm) {
 }
 
 
-// ---------- RFID SCAN ----------
+// ---------- RFID + ACTIVE BOOKING ACCESS ----------
+
+function normalizeIdentityText(value) {
+  return String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^0-9A-Z]/g, "");
+}
+
+function bookingWindow(booking) {
+  const start = new Date(
+    `${booking.date}T${booking.time}`
+  ).getTime();
+
+  const durationMinutes = Number(booking.duration) || 0;
+  const end = start + durationMinutes * 60000;
+
+  return { start, end };
+}
+
+function bookingBelongsToUser(booking, user, scannedUid) {
+  const bookingUid = normalizeUid(booking.uid);
+
+  if (bookingUid) {
+    return bookingUid === scannedUid;
+  }
+
+  const bookingPlate = normalizeIdentityText(booking.plate);
+  const userPlate = normalizeIdentityText(user.plate);
+
+  if (bookingPlate && userPlate && bookingPlate === userPlate) {
+    return true;
+  }
+
+  const bookingDriver = normalizeIdentityText(booking.driver);
+  const userName = normalizeIdentityText(user.name);
+
+  return Boolean(
+    bookingDriver &&
+    userName &&
+    bookingDriver === userName
+  );
+}
+
+function findActiveBooking(user, scannedUid, now = Date.now()) {
+  return bookings.find(booking => {
+    if (booking.status === "cancelled") {
+      return false;
+    }
+
+    if (!bookingBelongsToUser(booking, user, scannedUid)) {
+      return false;
+    }
+
+    const { start, end } = bookingWindow(booking);
+
+    if (!Number.isFinite(start) || !Number.isFinite(end)) {
+      return false;
+    }
+
+    return now >= start && now < end;
+  });
+}
+
+function bookingTimeRange(booking) {
+  const { start, end } = bookingWindow(booking);
+
+  const formatTime = timestamp =>
+    new Date(timestamp).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+
+  return `${formatTime(start)}–${formatTime(end)}`;
+}
 
 const scanBtn =
   document.getElementById("scanBtn");
@@ -810,49 +884,74 @@ if (scanBtn) {
         document.getElementById("scanUid").value
       );
 
-
       const user =
         rfidUsers.find(
-          item =>
-            item.uid === uid
+          item => item.uid === uid
         );
 
-
-      if (user) {
-
-        scanResult.className =
-          "scan-result granted";
-
-        scanResult.innerHTML =
-          `ACCESS GRANTED<br>${escapeHtml(user.name)} · ${escapeHtml(user.plate)}`;
-
-        if (firebaseMode) {
-          recordAccessEvent({
-            uid,
-            granted: true,
-            userName: user.name,
-            plate: user.plate
-          }).catch(error =>
-            console.error("Access event log failed", error)
-          );
-        }
-
-      } else {
+      if (!uid || !user) {
 
         scanResult.className =
           "scan-result denied";
 
-        scanResult.textContent =
-          "ACCESS DENIED";
+        scanResult.innerHTML =
+          "ACCESS DENIED<br>RFID NOT REGISTERED";
 
         if (firebaseMode) {
           recordAccessEvent({
             uid,
-            granted: false
+            granted: false,
+            source: "website-rfid-booking"
           }).catch(error =>
             console.error("Access event log failed", error)
           );
         }
+
+        return;
+      }
+
+      const activeBooking =
+        findActiveBooking(user, uid);
+
+      if (!activeBooking) {
+
+        scanResult.className =
+          "scan-result denied";
+
+        scanResult.innerHTML =
+          `ACCESS DENIED<br>${escapeHtml(user.name)} · NO ACTIVE BOOKING`;
+
+        if (firebaseMode) {
+          recordAccessEvent({
+            uid,
+            granted: false,
+            userName: user.name,
+            plate: user.plate,
+            source: "website-rfid-booking"
+          }).catch(error =>
+            console.error("Access event log failed", error)
+          );
+        }
+
+        return;
+      }
+
+      scanResult.className =
+        "scan-result granted";
+
+      scanResult.innerHTML =
+        `ACCESS GRANTED<br>${escapeHtml(user.name)} · ${escapeHtml(user.plate)}<br>${escapeHtml(activeBooking.slot)} · ${escapeHtml(bookingTimeRange(activeBooking))}`;
+
+      if (firebaseMode) {
+        recordAccessEvent({
+          uid,
+          granted: true,
+          userName: user.name,
+          plate: user.plate,
+          source: "website-rfid-booking"
+        }).catch(error =>
+          console.error("Access event log failed", error)
+        );
       }
     }
   );
