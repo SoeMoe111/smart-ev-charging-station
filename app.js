@@ -11,7 +11,6 @@ import {
   saveRfidUser,
   deleteRfidUser,
   deleteAllRfidUsers,
-  recordAccessEvent,
   subscribeStation,
   normalizeUid
 } from "./firebase-service.js";
@@ -24,6 +23,8 @@ let firebaseMode = false;
 let currentAuthUid = "";
 let adminMode = false;
 let unsubscribeRfidUsers = null;
+let latestDetectedUid = "";
+let latestDetectedTimestamp = 0;
 
 // ---------- PAGE NAVIGATION ----------
 const navTabs = [...document.querySelectorAll(".nav-tab")];
@@ -456,9 +457,8 @@ if (bookingForm) {
         plate:
           document.getElementById("plate").value.trim(),
 
-        uid: normalizeUid(
-          document.getElementById("uid").value
-        ),
+        // Public users do not type RFID UIDs. Identity is resolved at the station.
+        uid: "",
 
         date:
           document.getElementById("date").value,
@@ -723,12 +723,18 @@ if (rfidForm) {
           .value
           .trim(),
 
-        uid: normalizeUid(
-          document.getElementById("rfUid").value
-        )
+        uid: latestDetectedUid
 
       };
 
+
+      if (!latestDetectedUid) {
+        if (scanResult) {
+          scanResult.className = "scan-result denied";
+          scanResult.textContent = "TAP A CARD ON THE PHYSICAL READER FIRST";
+        }
+        return;
+      }
 
       try {
         if (firebaseMode) {
@@ -755,6 +761,9 @@ if (rfidForm) {
         }
 
         rfidForm.reset();
+        latestDetectedUid = "";
+        latestDetectedTimestamp = 0;
+        updateRfidEnrollmentUi();
       } catch (error) {
         console.error(error);
 
@@ -790,171 +799,88 @@ if (rfidForm) {
 }
 
 
-// ---------- RFID + ACTIVE BOOKING ACCESS ----------
+// ---------- HARDWARE RFID SCAN MONITOR ----------
 
-function normalizeIdentityText(value) {
-  return String(value ?? "")
-    .trim()
-    .toUpperCase()
-    .replace(/[^0-9A-Z]/g, "");
+function formatStationScanTime(timestamp) {
+  const numeric = Number(timestamp);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return "Waiting for hardware timestamp";
+  }
+  return new Date(numeric).toLocaleString();
 }
 
-function bookingWindow(booking) {
-  const start = new Date(
-    `${booking.date}T${booking.time}`
-  ).getTime();
-
-  const durationMinutes = Number(booking.duration) || 0;
-  const end = start + durationMinutes * 60000;
-
-  return { start, end };
+function scanIsRecent(timestamp) {
+  const numeric = Number(timestamp);
+  return Number.isFinite(numeric) &&
+    numeric > 0 &&
+    Math.abs(Date.now() - numeric) <= 120000;
 }
 
-function bookingBelongsToUser(booking, user, scannedUid) {
-  const bookingUid = normalizeUid(booking.uid);
+function updateRfidEnrollmentUi() {
+  const uidText = document.getElementById("enrollDetectedUid");
+  const hint = document.getElementById("enrollDetectedHint");
+  const button = document.getElementById("enrollCardBtn");
+  const recent = Boolean(
+    latestDetectedUid && scanIsRecent(latestDetectedTimestamp)
+  );
 
-  if (bookingUid) {
-    return bookingUid === scannedUid;
+  if (uidText) {
+    uidText.textContent = latestDetectedUid || "WAITING FOR CARD";
   }
 
-  const bookingPlate = normalizeIdentityText(booking.plate);
-  const userPlate = normalizeIdentityText(user.plate);
-
-  if (bookingPlate && userPlate && bookingPlate === userPlate) {
-    return true;
+  if (hint) {
+    hint.textContent = recent
+      ? "Card detected. Enter user details and enroll within 2 minutes."
+      : "Tap a card on the station RC522 reader.";
   }
 
-  const bookingDriver = normalizeIdentityText(booking.driver);
-  const userName = normalizeIdentityText(user.name);
+  if (button) {
+    button.disabled = !recent;
+  }
+}
 
-  return Boolean(
-    bookingDriver &&
-    userName &&
-    bookingDriver === userName
+function applyRfidStationState(rfid = {}) {
+  const latest = rfid.latestScan || {};
+  const uid = normalizeUid(latest.uid);
+  const timestamp = Number(latest.timestamp) || 0;
+
+  setText(
+    "readerStatus",
+    rfid.online === false
+      ? "READER OFFLINE"
+      : (uid ? "CARD DETECTED" : "READER ONLINE · WAITING")
   );
-}
+  setText("latestScanUid", uid ? `UID: ${uid}` : "No card detected yet");
+  setText("latestScanTime", formatStationScanTime(timestamp));
 
-function findActiveBooking(user, scannedUid, now = Date.now()) {
-  return bookings.find(booking => {
-    if (booking.status === "cancelled") {
-      return false;
-    }
+  if (uid) {
+    latestDetectedUid = uid;
+    latestDetectedTimestamp = timestamp;
+  }
 
-    if (!bookingBelongsToUser(booking, user, scannedUid)) {
-      return false;
-    }
+  updateRfidEnrollmentUi();
 
-    const { start, end } = bookingWindow(booking);
+  if (!scanResult || !uid) return;
 
-    if (!Number.isFinite(start) || !Number.isFinite(end)) {
-      return false;
-    }
+  if (latest.granted === true) {
+    scanResult.className = "scan-result granted";
+    scanResult.innerHTML =
+      `ACCESS GRANTED<br>${escapeHtml(latest.userName || "Registered user")}` +
+      `${latest.plate ? ` · ${escapeHtml(latest.plate)}` : ""}` +
+      `${latest.slot ? `<br>${escapeHtml(latest.slot)}` : ""}`;
+    return;
+  }
 
-    return now >= start && now < end;
-  });
-}
+  if (latest.granted === false) {
+    scanResult.className = "scan-result denied";
+    scanResult.innerHTML =
+      `ACCESS DENIED<br>${escapeHtml(latest.reason || "NOT AUTHORIZED")}`;
+    return;
+  }
 
-function bookingTimeRange(booking) {
-  const { start, end } = bookingWindow(booking);
-
-  const formatTime = timestamp =>
-    new Date(timestamp).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-
-  return `${formatTime(start)}–${formatTime(end)}`;
-}
-
-const scanBtn =
-  document.getElementById("scanBtn");
-
-
-if (scanBtn) {
-
-  scanBtn.addEventListener(
-    "click",
-    async () => {
-
-      if (!adminMode) {
-        return;
-      }
-
-      const uid = normalizeUid(
-        document.getElementById("scanUid").value
-      );
-
-      const user =
-        rfidUsers.find(
-          item => item.uid === uid
-        );
-
-      if (!uid || !user) {
-
-        scanResult.className =
-          "scan-result denied";
-
-        scanResult.innerHTML =
-          "ACCESS DENIED<br>RFID NOT REGISTERED";
-
-        if (firebaseMode) {
-          recordAccessEvent({
-            uid,
-            granted: false,
-            source: "website-rfid-booking"
-          }).catch(error =>
-            console.error("Access event log failed", error)
-          );
-        }
-
-        return;
-      }
-
-      const activeBooking =
-        findActiveBooking(user, uid);
-
-      if (!activeBooking) {
-
-        scanResult.className =
-          "scan-result denied";
-
-        scanResult.innerHTML =
-          `ACCESS DENIED<br>${escapeHtml(user.name)} · NO ACTIVE BOOKING`;
-
-        if (firebaseMode) {
-          recordAccessEvent({
-            uid,
-            granted: false,
-            userName: user.name,
-            plate: user.plate,
-            source: "website-rfid-booking"
-          }).catch(error =>
-            console.error("Access event log failed", error)
-          );
-        }
-
-        return;
-      }
-
-      scanResult.className =
-        "scan-result granted";
-
-      scanResult.innerHTML =
-        `ACCESS GRANTED<br>${escapeHtml(user.name)} · ${escapeHtml(user.plate)}<br>${escapeHtml(activeBooking.slot)} · ${escapeHtml(bookingTimeRange(activeBooking))}`;
-
-      if (firebaseMode) {
-        recordAccessEvent({
-          uid,
-          granted: true,
-          userName: user.name,
-          plate: user.plate,
-          source: "website-rfid-booking"
-        }).catch(error =>
-          console.error("Access event log failed", error)
-        );
-      }
-    }
-  );
+  scanResult.className = "scan-result";
+  scanResult.innerHTML =
+    `CARD DETECTED<br>${escapeHtml(uid)}<br>WAITING FOR STATION DECISION`;
 }
 
 
@@ -1104,6 +1030,7 @@ function applyStationTelemetry(station = {}) {
 
   applySlotTelemetry(1, slot1);
   applySlotTelemetry(2, slot2);
+  applyRfidStationState(station.rfid || {});
 
   const totalCurrent =
     finiteNumber(slot1.current) +

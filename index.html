@@ -293,7 +293,7 @@
     <p class="eyebrow">RESERVATION SYSTEM</p>
     <h1>Book a charging time</h1>
     <p>
-      Reserve a charging slot and automatically check for overlapping reservations.
+      Reserve a charging slot online. RFID identity is verified automatically when the driver arrives at the station.
     </p>
   </div>
 
@@ -320,11 +320,6 @@
           <label>
             Vehicle Plate
             <input id="plate" placeholder="Example: YGN-1234" required>
-          </label>
-
-          <label>
-            RFID UID
-            <input id="uid" placeholder="Optional RFID UID">
           </label>
 
           <label>
@@ -371,13 +366,13 @@
         <h3>Conflict-aware reservation</h3>
 
         <ol>
-          <li>Select your preferred slot and start time.</li>
-          <li>The website checks the shared Firebase reservation calendar.</li>
-          <li>Overlapping bookings are rejected automatically.</li>
+          <li>Enter driver and vehicle details, then select a slot and time.</li>
+          <li>The website checks the shared Firebase calendar and rejects overlaps.</li>
+          <li>At the station, the driver taps the enrolled RFID card for automatic verification.</li>
         </ol>
 
         <div class="note-box">
-          Firebase synchronizes bookings across phones, laptops and the future ESP32 station bridge.
+          Drivers do not need to know or type their RFID UID when booking.
         </div>
 
       </aside>
@@ -439,11 +434,11 @@
 
   <div class="page-hero">
 
-    <p class="eyebrow">USER ACCESS PROTOTYPE</p>
-    <h1>RFID access control</h1>
+    <p class="eyebrow">ADMIN · CARD ENROLLMENT & ACCESS MONITOR</p>
+    <h1>RFID station access</h1>
 
     <p>
-      Register users, simulate card scans and demonstrate authorization before hardware-to-cloud integration.
+      The physical RC522 reader sends card scans through ESP32 to Firebase. Admins enroll cards and monitor access without typing UIDs manually.
     </p>
 
   </div>
@@ -454,20 +449,20 @@
 
       <div class="step-card">
         <span>1</span>
-        <b>Register user</b>
-        <p>Store user details and RFID UID.</p>
+        <b>Enter user details</b>
+        <p>Admin enters the driver name and vehicle plate.</p>
       </div>
 
       <div class="step-card">
         <span>2</span>
-        <b>Scan card</b>
-        <p>Enter or simulate the RFID UID.</p>
+        <b>Tap physical card</b>
+        <p>RC522 reads the UID and ESP32 sends it to Firebase.</p>
       </div>
 
       <div class="step-card">
         <span>3</span>
-        <b>Authorize charging</b>
-        <p>Grant or deny station access.</p>
+        <b>Enroll & monitor</b>
+        <p>Bind the detected card once, then monitor future access automatically.</p>
       </div>
 
     </div>
@@ -478,8 +473,8 @@
 
         <div class="panel-head">
           <div>
-            <p class="section-kicker">USER REGISTRATION</p>
-            <h3>RFID user registration</h3>
+            <p class="section-kicker">CARD ENROLLMENT</p>
+            <h3>Bind a detected card to a user</h3>
           </div>
         </div>
 
@@ -500,15 +495,16 @@
             <input id="rfEmail" placeholder="Optional email">
           </label>
 
-          <label>
-            RFID UID
-            <input id="rfUid" placeholder="Example: 7A BB E4 06" required>
-          </label>
+          <div class="note-box">
+            <small>LATEST CARD FROM PHYSICAL READER</small><br>
+            <strong id="enrollDetectedUid">WAITING FOR CARD</strong><br>
+            <span id="enrollDetectedHint">Tap a card on the station RC522 reader.</span>
+          </div>
 
         </div>
 
-        <button class="primary-btn wide">
-          REGISTER RFID USER
+        <button id="enrollCardBtn" class="primary-btn wide" disabled>
+          ENROLL DETECTED CARD
         </button>
 
       </form>
@@ -518,8 +514,8 @@
         <div class="panel-head">
 
           <div>
-            <p class="section-kicker">SCAN TERMINAL</p>
-            <h3>RFID scan terminal</h3>
+            <p class="section-kicker">LIVE READER MONITOR</p>
+            <h3>Latest station card scan</h3>
           </div>
 
           <span class="reader-led"></span>
@@ -531,17 +527,18 @@
           <div class="rfid-symbol">◉</div>
 
           <p>
-            Enter a registered UID to simulate a card tap.
+            No UID entry is required here. The station reader publishes each scan through ESP32 and Firebase.
           </p>
 
-          <input id="scanUid" placeholder="RFID UID">
-
-          <button id="scanBtn" class="primary-btn wide">
-            SIMULATE RFID SCAN
-          </button>
+          <div class="note-box">
+            <small>READER STATUS</small><br>
+            <strong id="readerStatus">WAITING FOR ESP32</strong><br>
+            <span id="latestScanUid">No card detected yet</span><br>
+            <span id="latestScanTime">Waiting for hardware data</span>
+          </div>
 
           <div id="scanResult" class="scan-result">
-            WAITING FOR CARD
+            WAITING FOR HARDWARE SCAN
           </div>
 
         </div>
