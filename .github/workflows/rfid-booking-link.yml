@@ -1,4 +1,4 @@
-name: Link RFID access to active bookings
+name: Hardware-first RFID enrollment UI
 
 on:
   push:
@@ -15,19 +15,261 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Patch app.js
-        shell: bash
-        run: echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCnBhdGggPSBQYXRoKCJhcHAuanMiKQp0ZXh0ID0gcGF0aC5yZWFkX3RleHQoZW5jb2Rpbmc9InV0Zi04IikKc3RhcnQgPSB0ZXh0LmluZGV4KCIvLyAtLS0tLS0tLS0tIFJGSUQgU0NBTiAtLS0tLS0tLS0tIikKZW5kID0gdGV4dC5pbmRleCgiY29uc3QgY2xlYXJVc2VycyA9Iiwgc3RhcnQpCnJlcGxhY2VtZW50ID0gcicnJy8vIC0tLS0tLS0tLS0gUkZJRCArIEFDVElWRSBCT09LSU5HIEFDQ0VTUyAtLS0tLS0tLS0tCgpmdW5jdGlvbiBub3JtYWxpemVJZGVudGl0eVRleHQodmFsdWUpIHsKICByZXR1cm4gU3RyaW5nKHZhbHVlID8/ICIiKQogICAgLnRyaW0oKQogICAgLnRvVXBwZXJDYXNlKCkKICAgIC5yZXBsYWNlKC9bXjAtOUEtWl0vZywgIiIpOwp9CgpmdW5jdGlvbiBib29raW5nV2luZG93KGJvb2tpbmcpIHsKICBjb25zdCBzdGFydCA9IG5ldyBEYXRlKAogICAgYCR7Ym9va2luZy5kYXRlfVQke2Jvb2tpbmcudGltZX1gCiAgKS5nZXRUaW1lKCk7CgogIGNvbnN0IGR1cmF0aW9uTWludXRlcyA9IE51bWJlcihib29raW5nLmR1cmF0aW9uKSB8fCAwOwogIGNvbnN0IGVuZCA9IHN0YXJ0ICsgZHVyYXRpb25NaW51dGVzICogNjAwMDA7CgogIHJldHVybiB7IHN0YXJ0LCBlbmQgfTsKfQoKZnVuY3Rpb24gYm9va2luZ0JlbG9uZ3NUb1VzZXIoYm9va2luZywgdXNlciwgc2Nhbm5lZFVpZCkgewogIGNvbnN0IGJvb2tpbmdVaWQgPSBub3JtYWxpemVVaWQoYm9va2luZy51aWQpOwoKICBpZiAoYm9va2luZ1VpZCkgewogICAgcmV0dXJuIGJvb2tpbmdVaWQgPT09IHNjYW5uZWRVaWQ7CiAgfQoKICBjb25zdCBib29raW5nUGxhdGUgPSBub3JtYWxpemVJZGVudGl0eVRleHQoYm9va2luZy5wbGF0ZSk7CiAgY29uc3QgdXNlclBsYXRlID0gbm9ybWFsaXplSWRlbnRpdHlUZXh0KHVzZXIucGxhdGUpOwoKICBpZiAoYm9va2luZ1BsYXRlICYmIHVzZXJQbGF0ZSAmJiBib29raW5nUGxhdGUgPT09IHVzZXJQbGF0ZSkgewogICAgcmV0dXJuIHRydWU7CiAgfQoKICBjb25zdCBib29raW5nRHJpdmVyID0gbm9ybWFsaXplSWRlbnRpdHlUZXh0KGJvb2tpbmcuZHJpdmVyKTsKICBjb25zdCB1c2VyTmFtZSA9IG5vcm1hbGl6ZUlkZW50aXR5VGV4dCh1c2VyLm5hbWUpOwoKICByZXR1cm4gQm9vbGVhbigKICAgIGJvb2tpbmdEcml2ZXIgJiYKICAgIHVzZXJOYW1lICYmCiAgICBib29raW5nRHJpdmVyID09PSB1c2VyTmFtZQogICk7Cn0KCmZ1bmN0aW9uIGZpbmRBY3RpdmVCb29raW5nKHVzZXIsIHNjYW5uZWRVaWQsIG5vdyA9IERhdGUubm93KCkpIHsKICByZXR1cm4gYm9va2luZ3MuZmluZChib29raW5nID0+IHsKICAgIGlmIChib29raW5nLnN0YXR1cyA9PT0gImNhbmNlbGxlZCIpIHsKICAgICAgcmV0dXJuIGZhbHNlOwogICAgfQoKICAgIGlmICghYm9va2luZ0JlbG9uZ3NUb1VzZXIoYm9va2luZywgdXNlciwgc2Nhbm5lZFVpZCkpIHsKICAgICAgcmV0dXJuIGZhbHNlOwogICAgfQoKICAgIGNvbnN0IHsgc3RhcnQsIGVuZCB9ID0gYm9va2luZ1dpbmRvdyhib29raW5nKTsKCiAgICBpZiAoIU51bWJlci5pc0Zpbml0ZShzdGFydCkgfHwgIU51bWJlci5pc0Zpbml0ZShlbmQpKSB7CiAgICAgIHJldHVybiBmYWxzZTsKICAgIH0KCiAgICByZXR1cm4gbm93ID49IHN0YXJ0ICYmIG5vdyA8IGVuZDsKICB9KTsKfQoKZnVuY3Rpb24gYm9va2luZ1RpbWVSYW5nZShib29raW5nKSB7CiAgY29uc3QgeyBzdGFydCwgZW5kIH0gPSBib29raW5nV2luZG93KGJvb2tpbmcpOwoKICBjb25zdCBmb3JtYXRUaW1lID0gdGltZXN0YW1wID0+CiAgICBuZXcgRGF0ZSh0aW1lc3RhbXApLnRvTG9jYWxlVGltZVN0cmluZyhbXSwgewogICAgICBob3VyOiAiMi1kaWdpdCIsCiAgICAgIG1pbnV0ZTogIjItZGlnaXQiCiAgICB9KTsKCiAgcmV0dXJuIGAke2Zvcm1hdFRpbWUoc3RhcnQpfeKAkyR7Zm9ybWF0VGltZShlbmQpfWA7Cn0KCmNvbnN0IHNjYW5CdG4gPQogIGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCJzY2FuQnRuIik7CgoKaWYgKHNjYW5CdG4pIHsKCiAgc2NhbkJ0bi5hZGRFdmVudExpc3RlbmVyKAogICAgImNsaWNrIiwKICAgIGFzeW5jICgpID0+IHsKCiAgICAgIGlmICghYWRtaW5Nb2RlKSB7CiAgICAgICAgcmV0dXJuOwogICAgICB9CgogICAgICBjb25zdCB1aWQgPSBub3JtYWxpemVVaWQoCiAgICAgICAgZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoInNjYW5VaWQiKS52YWx1ZQogICAgICApOwoKICAgICAgY29uc3QgdXNlciA9CiAgICAgICAgcmZpZFVzZXJzLmZpbmQoCiAgICAgICAgICBpdGVtID0+IGl0ZW0udWlkID09PSB1aWQKICAgICAgICApOwoKICAgICAgaWYgKCF1aWQgfHwgIXVzZXIpIHsKCiAgICAgICAgc2NhblJlc3VsdC5jbGFzc05hbWUgPQogICAgICAgICAgInNjYW4tcmVzdWx0IGRlbmllZCI7CgogICAgICAgIHNjYW5SZXN1bHQuaW5uZXJIVE1MID0KICAgICAgICAgICJBQ0NFU1MgREVOSUVEPGJyPlJGSUQgTk9UIFJFR0lTVEVSRUQiOwoKICAgICAgICBpZiAoZmlyZWJhc2VNb2RlKSB7CiAgICAgICAgICByZWNvcmRBY2Nlc3NFdmVudCh7CiAgICAgICAgICAgIHVpZCwKICAgICAgICAgICAgZ3JhbnRlZDogZmFsc2UsCiAgICAgICAgICAgIHNvdXJjZTogIndlYnNpdGUtcmZpZC1ib29raW5nIgogICAgICAgICAgfSkuY2F0Y2goZXJyb3IgPT4KICAgICAgICAgICAgY29uc29sZS5lcnJvcigiQWNjZXNzIGV2ZW50IGxvZyBmYWlsZWQiLCBlcnJvcikKICAgICAgICAgICk7CiAgICAgICAgfQoKICAgICAgICByZXR1cm47CiAgICAgIH0KCiAgICAgIGNvbnN0IGFjdGl2ZUJvb2tpbmcgPQogICAgICAgIGZpbmRBY3RpdmVCb29raW5nKHVzZXIsIHVpZCk7CgogICAgICBpZiAoIWFjdGl2ZUJvb2tpbmcpIHsKCiAgICAgICAgc2NhblJlc3VsdC5jbGFzc05hbWUgPQogICAgICAgICAgInNjYW4tcmVzdWx0IGRlbmllZCI7CgogICAgICAgIHNjYW5SZXN1bHQuaW5uZXJIVE1MID0KICAgICAgICAgIGBBQ0NFU1MgREVOSUVEPGJyPiR7ZXNjYXBlSHRtbCh1c2VyLm5hbWUpfSDCtyBOTyBBQ1RJVkUgQk9PS0lOR2A7CgogICAgICAgIGlmIChmaXJlYmFzZU1vZGUpIHsKICAgICAgICAgIHJlY29yZEFjY2Vzc0V2ZW50KHsKICAgICAgICAgICAgdWlkLAogICAgICAgICAgICBncmFudGVkOiBmYWxzZSwKICAgICAgICAgICAgdXNlck5hbWU6IHVzZXIubmFtZSwKICAgICAgICAgICAgcGxhdGU6IHVzZXIucGxhdGUsCiAgICAgICAgICAgIHNvdXJjZTogIndlYnNpdGUtcmZpZC1ib29raW5nIgogICAgICAgICAgfSkuY2F0Y2goZXJyb3IgPT4KICAgICAgICAgICAgY29uc29sZS5lcnJvcigiQWNjZXNzIGV2ZW50IGxvZyBmYWlsZWQiLCBlcnJvcikKICAgICAgICAgICk7CiAgICAgICAgfQoKICAgICAgICByZXR1cm47CiAgICAgIH0KCiAgICAgIHNjYW5SZXN1bHQuY2xhc3NOYW1lID0KICAgICAgICAic2Nhbi1yZXN1bHQgZ3JhbnRlZCI7CgogICAgICBzY2FuUmVzdWx0LmlubmVySFRNTCA9CiAgICAgICAgYEFDQ0VTUyBHUkFOVEVEPGJyPiR7ZXNjYXBlSHRtbCh1c2VyLm5hbWUpfSDCtyAke2VzY2FwZUh0bWwodXNlci5wbGF0ZSl9PGJyPiR7ZXNjYXBlSHRtbChhY3RpdmVCb29raW5nLnNsb3QpfSDCtyAke2VzY2FwZUh0bWwoYm9va2luZ1RpbWVSYW5nZShhY3RpdmVCb29raW5nKSl9YDsKCiAgICAgIGlmIChmaXJlYmFzZU1vZGUpIHsKICAgICAgICByZWNvcmRBY2Nlc3NFdmVudCh7CiAgICAgICAgICB1aWQsCiAgICAgICAgICBncmFudGVkOiB0cnVlLAogICAgICAgICAgdXNlck5hbWU6IHVzZXIubmFtZSwKICAgICAgICAgIHBsYXRlOiB1c2VyLnBsYXRlLAogICAgICAgICAgc291cmNlOiAid2Vic2l0ZS1yZmlkLWJvb2tpbmciCiAgICAgICAgfSkuY2F0Y2goZXJyb3IgPT4KICAgICAgICAgIGNvbnNvbGUuZXJyb3IoIkFjY2VzcyBldmVudCBsb2cgZmFpbGVkIiwgZXJyb3IpCiAgICAgICAgKTsKICAgICAgfQogICAgfQogICk7Cn0KCgonJycKdXBkYXRlZCA9IHRleHRbOnN0YXJ0XSArIHJlcGxhY2VtZW50ICsgdGV4dFtlbmQ6XQpwYXRoLndyaXRlX3RleHQodXBkYXRlZCwgZW5jb2Rpbmc9InV0Zi04IikK' | base64 -d | python
-
-      - name: Commit application update
+      - name: Patch website for hardware RFID flow
         shell: bash
         run: |
-          if git diff --quiet -- app.js; then
-            echo "No app.js changes needed."
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text, old, new, label):
+              if old not in text:
+                  raise SystemExit(f"Could not find block: {label}")
+              return text.replace(old, new, 1)
+
+          # ---------------- index.html ----------------
+          index_path = Path("index.html")
+          index = index_path.read_text(encoding="utf-8")
+
+          index = replace_once(
+              index,
+              '''    <p>\n      Reserve a charging slot and automatically check for overlapping reservations.\n    </p>''',
+              '''    <p>\n      Reserve a charging slot online. RFID identity is verified automatically when the driver arrives at the station.\n    </p>''',
+              "booking page description"
+          )
+
+          index = replace_once(
+              index,
+              '''          <label>\n            RFID UID\n            <input id="uid" placeholder="Optional RFID UID">\n          </label>\n\n''',
+              '''''',
+              "public booking RFID field"
+          )
+
+          index = replace_once(
+              index,
+              '''        <ol>\n          <li>Select your preferred slot and start time.</li>\n          <li>The website checks the shared Firebase reservation calendar.</li>\n          <li>Overlapping bookings are rejected automatically.</li>\n        </ol>\n\n        <div class="note-box">\n          Firebase synchronizes bookings across phones, laptops and the future ESP32 station bridge.\n        </div>''',
+              '''        <ol>\n          <li>Enter driver and vehicle details, then select a slot and time.</li>\n          <li>The website checks the shared Firebase calendar and rejects overlaps.</li>\n          <li>At the station, the driver taps the enrolled RFID card for automatic verification.</li>\n        </ol>\n\n        <div class="note-box">\n          Drivers do not need to know or type their RFID UID when booking.\n        </div>''',
+              "booking how-it-works"
+          )
+
+          index = replace_once(
+              index,
+              '''    <p class="eyebrow">USER ACCESS PROTOTYPE</p>\n    <h1>RFID access control</h1>\n\n    <p>\n      Register users, simulate card scans and demonstrate authorization before hardware-to-cloud integration.\n    </p>''',
+              '''    <p class="eyebrow">ADMIN · CARD ENROLLMENT & ACCESS MONITOR</p>\n    <h1>RFID station access</h1>\n\n    <p>\n      The physical RC522 reader sends card scans through ESP32 to Firebase. Admins enroll cards and monitor access without typing UIDs manually.\n    </p>''',
+              "rfid hero"
+          )
+
+          index = replace_once(
+              index,
+              '''      <div class="step-card">\n        <span>1</span>\n        <b>Register user</b>\n        <p>Store user details and RFID UID.</p>\n      </div>\n\n      <div class="step-card">\n        <span>2</span>\n        <b>Scan card</b>\n        <p>Enter or simulate the RFID UID.</p>\n      </div>\n\n      <div class="step-card">\n        <span>3</span>\n        <b>Authorize charging</b>\n        <p>Grant or deny station access.</p>\n      </div>''',
+              '''      <div class="step-card">\n        <span>1</span>\n        <b>Enter user details</b>\n        <p>Admin enters the driver name and vehicle plate.</p>\n      </div>\n\n      <div class="step-card">\n        <span>2</span>\n        <b>Tap physical card</b>\n        <p>RC522 reads the UID and ESP32 sends it to Firebase.</p>\n      </div>\n\n      <div class="step-card">\n        <span>3</span>\n        <b>Enroll & monitor</b>\n        <p>Bind the detected card once, then monitor future access automatically.</p>\n      </div>''',
+              "rfid steps"
+          )
+
+          index = replace_once(
+              index,
+              '''            <p class="section-kicker">USER REGISTRATION</p>\n            <h3>RFID user registration</h3>''',
+              '''            <p class="section-kicker">CARD ENROLLMENT</p>\n            <h3>Bind a detected card to a user</h3>''',
+              "rfid form heading"
+          )
+
+          index = replace_once(
+              index,
+              '''          <label>\n            RFID UID\n            <input id="rfUid" placeholder="Example: 7A BB E4 06" required>\n          </label>\n\n        </div>\n\n        <button class="primary-btn wide">\n          REGISTER RFID USER\n        </button>''',
+              '''          <div class="note-box">\n            <small>LATEST CARD FROM PHYSICAL READER</small><br>\n            <strong id="enrollDetectedUid">WAITING FOR CARD</strong><br>\n            <span id="enrollDetectedHint">Tap a card on the station RC522 reader.</span>\n          </div>\n\n        </div>\n\n        <button id="enrollCardBtn" class="primary-btn wide" disabled>\n          ENROLL DETECTED CARD\n        </button>''',
+              "rfid UID enrollment field"
+          )
+
+          index = replace_once(
+              index,
+              '''            <p class="section-kicker">SCAN TERMINAL</p>\n            <h3>RFID scan terminal</h3>''',
+              '''            <p class="section-kicker">LIVE READER MONITOR</p>\n            <h3>Latest station card scan</h3>''',
+              "scan panel heading"
+          )
+
+          index = replace_once(
+              index,
+              '''          <p>\n            Enter a registered UID to simulate a card tap.\n          </p>\n\n          <input id="scanUid" placeholder="RFID UID">\n\n          <button id="scanBtn" class="primary-btn wide">\n            SIMULATE RFID SCAN\n          </button>\n\n          <div id="scanResult" class="scan-result">\n            WAITING FOR CARD\n          </div>''',
+              '''          <p>\n            No UID entry is required here. The station reader will publish each scan through ESP32 and Firebase.\n          </p>\n\n          <div class="note-box">\n            <small>READER STATUS</small><br>\n            <strong id="readerStatus">WAITING FOR ESP32</strong><br>\n            <span id="latestScanUid">No card detected yet</span><br>\n            <span id="latestScanTime">Waiting for hardware data</span>\n          </div>\n\n          <div id="scanResult" class="scan-result">\n            WAITING FOR HARDWARE SCAN\n          </div>''',
+              "manual RFID scan controls"
+          )
+
+          index_path.write_text(index, encoding="utf-8")
+
+          # ---------------- app.js ----------------
+          app_path = Path("app.js")
+          app = app_path.read_text(encoding="utf-8")
+
+          app = replace_once(
+              app,
+              '''  recordAccessEvent,\n''',
+              '''''',
+              "unused recordAccessEvent import"
+          )
+
+          app = replace_once(
+              app,
+              '''let unsubscribeRfidUsers = null;''',
+              '''let unsubscribeRfidUsers = null;\nlet latestDetectedUid = "";\nlet latestDetectedTimestamp = 0;''',
+              "RFID hardware state globals"
+          )
+
+          app = replace_once(
+              app,
+              '''        uid: normalizeUid(\n          document.getElementById("uid").value\n        ),''',
+              '''        // Public users do not type RFID UIDs. Identity is resolved at the station.\n        uid: "",''',
+              "booking UID capture"
+          )
+
+          app = replace_once(
+              app,
+              '''        uid: normalizeUid(\n          document.getElementById("rfUid").value\n        )''',
+              '''        uid: latestDetectedUid''',
+              "admin manual UID capture"
+          )
+
+          app = replace_once(
+              app,
+              '''      try {\n        if (firebaseMode) {\n          await saveRfidUser(user);''',
+              '''      if (!latestDetectedUid) {\n        if (scanResult) {\n          scanResult.className = "scan-result denied";\n          scanResult.textContent = "TAP A CARD ON THE PHYSICAL READER FIRST";\n        }\n        return;\n      }\n\n      try {\n        if (firebaseMode) {\n          await saveRfidUser(user);''',
+              "require detected card before enrollment"
+          )
+
+          app = replace_once(
+              app,
+              '''        rfidForm.reset();''',
+              '''        rfidForm.reset();\n        latestDetectedUid = "";\n        latestDetectedTimestamp = 0;\n        updateRfidEnrollmentUi();''',
+              "clear enrollment scan after save"
+          )
+
+          marker = "// ---------- RFID + ACTIVE BOOKING ACCESS ----------"
+          start = app.index(marker)
+          end = app.index("const clearUsers =", start)
+          hardware_block = r'''// ---------- HARDWARE RFID SCAN MONITOR ----------
+
+function formatStationScanTime(timestamp) {
+  const numeric = Number(timestamp);
+
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return "Waiting for hardware timestamp";
+  }
+
+  return new Date(numeric).toLocaleString();
+}
+
+function scanIsRecent(timestamp) {
+  const numeric = Number(timestamp);
+
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return false;
+  }
+
+  return Math.abs(Date.now() - numeric) <= 120000;
+}
+
+function updateRfidEnrollmentUi() {
+  const detectedUid = document.getElementById("enrollDetectedUid");
+  const detectedHint = document.getElementById("enrollDetectedHint");
+  const enrollButton = document.getElementById("enrollCardBtn");
+
+  if (detectedUid) {
+    detectedUid.textContent = latestDetectedUid || "WAITING FOR CARD";
+  }
+
+  const recent = Boolean(
+    latestDetectedUid && scanIsRecent(latestDetectedTimestamp)
+  );
+
+  if (detectedHint) {
+    detectedHint.textContent = recent
+      ? "Card detected. Enter user details and enroll within 2 minutes."
+      : "Tap a card on the station RC522 reader.";
+  }
+
+  if (enrollButton) {
+    enrollButton.disabled = !recent;
+  }
+}
+
+function applyRfidStationState(rfid = {}) {
+  const latest = rfid.latestScan || {};
+  const uid = normalizeUid(latest.uid);
+  const timestamp = Number(latest.timestamp) || 0;
+
+  const readerStatus = document.getElementById("readerStatus");
+  const latestScanUid = document.getElementById("latestScanUid");
+  const latestScanTime = document.getElementById("latestScanTime");
+
+  if (readerStatus) {
+    readerStatus.textContent = rfid.online === false
+      ? "READER OFFLINE"
+      : (uid ? "CARD DETECTED" : "READER ONLINE · WAITING");
+  }
+
+  if (latestScanUid) {
+    latestScanUid.textContent = uid
+      ? `UID: ${uid}`
+      : "No card detected yet";
+  }
+
+  if (latestScanTime) {
+    latestScanTime.textContent = formatStationScanTime(timestamp);
+  }
+
+  if (uid) {
+    latestDetectedUid = uid;
+    latestDetectedTimestamp = timestamp;
+  }
+
+  updateRfidEnrollmentUi();
+
+  if (!scanResult || !uid) {
+    return;
+  }
+
+  if (latest.granted === true) {
+    scanResult.className = "scan-result granted";
+    scanResult.innerHTML =
+      `ACCESS GRANTED<br>${escapeHtml(latest.userName || "Registered user")}` +
+      `${latest.plate ? ` · ${escapeHtml(latest.plate)}` : ""}` +
+      `${latest.slot ? `<br>${escapeHtml(latest.slot)}` : ""}`;
+    return;
+  }
+
+  if (latest.granted === false) {
+    scanResult.className = "scan-result denied";
+    scanResult.innerHTML =
+      `ACCESS DENIED<br>${escapeHtml(latest.reason || "NOT AUTHORIZED")}`;
+    return;
+  }
+
+  scanResult.className = "scan-result";
+  scanResult.innerHTML =
+    `CARD DETECTED<br>${escapeHtml(uid)}<br>WAITING FOR STATION DECISION`;
+}
+
+
+'''
+          app = app[:start] + hardware_block + app[end:]
+
+          app = replace_once(
+              app,
+              '''  applySlotTelemetry(1, slot1);\n  applySlotTelemetry(2, slot2);''',
+              '''  applySlotTelemetry(1, slot1);\n  applySlotTelemetry(2, slot2);\n  applyRfidStationState(station.rfid || {});''',
+              "station RFID telemetry hook"
+          )
+
+          app_path.write_text(app, encoding="utf-8")
+          PY
+
+      - name: Commit website update
+        shell: bash
+        run: |
+          if git diff --quiet -- index.html app.js; then
+            echo "No website changes needed."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app.js
-          git commit -m "Require active booking for RFID access"
+          git add index.html app.js
+          git commit -m "Switch RFID UI to hardware-first enrollment flow"
           git push
