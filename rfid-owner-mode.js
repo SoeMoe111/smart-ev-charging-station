@@ -3,7 +3,7 @@
 
 const PROJECT_CARD_OWNERS = Object.freeze({
   "7A BB E4 06": "Soe Moe",
-  "8D B0 50 07": "Pwint Phyu Hlaing",
+  "BD B0 50 07": "Pwint Phyu Hlaing",
   "8D C9 0D 07": "Kyaw Zayar Min"
 });
 
