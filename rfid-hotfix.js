@@ -1,19 +1,9 @@
-// RFID display hotfix: clear stale access results when ESP32 is offline
-// and keep the registered owner list synced for an active admin session.
+// RFID display hotfix: only clear stale reader/access state when ESP32 is offline.
+// The registered RFID owner list is managed by app.js so two scripts do not
+// compete to overwrite the same UI.
 
 const HOTFIX_STALE_MS = 15000;
 let hotfixStation = {};
-let ownerListUnsubscribe = null;
-let ownerListRetryTimer = null;
-
-function hotfixEscapeHtml(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
 
 function hotfixSlotFresh(slot = {}) {
   const updatedAt = Number(slot.updatedAt);
@@ -49,60 +39,10 @@ function clearStaleRfidUi() {
   }
   if (enrollButton) enrollButton.disabled = true;
 
-  // Important: never leave a previous ACCESS GRANTED result visible while offline.
   if (scanResult) {
     scanResult.className = "scan-result";
     scanResult.textContent = "WAITING FOR HARDWARE SCAN";
   }
-}
-
-function renderOwnerList(users, service) {
-  const list = document.getElementById("rfidUsersList");
-  if (!list) return;
-
-  if (!Array.isArray(users) || users.length === 0) {
-    list.innerHTML = '<div class="empty-state">No RFID users registered yet.</div>';
-    return;
-  }
-
-  list.innerHTML = users.map(user => `
-    <div class="user-row">
-      <b>${hotfixEscapeHtml(user.name || "Unnamed user")}</b>
-      <span>${hotfixEscapeHtml(user.plate || "N/A")}</span>
-      <span>${hotfixEscapeHtml(user.uid || "")}</span>
-      <button class="ghost-btn hotfix-remove-user" data-user-id="${hotfixEscapeHtml(user.id || "")}">
-        REMOVE
-      </button>
-    </div>
-  `).join("");
-
-  list.querySelectorAll(".hotfix-remove-user").forEach(button => {
-    button.addEventListener("click", async () => {
-      const id = button.dataset.userId || "";
-      if (!id) return;
-      if (!confirm("Remove this RFID user?")) return;
-
-      try {
-        button.disabled = true;
-        await service.deleteRfidUser(id);
-      } catch (error) {
-        console.error("RFID user remove failed", error);
-        alert("RFID user could not be removed.");
-        button.disabled = false;
-      }
-    });
-  });
-}
-
-function showOwnerListSyncError(message) {
-  const list = document.getElementById("rfidUsersList");
-  if (!list) return;
-  list.innerHTML = `
-    <div class="empty-state">
-      RFID LIST SYNC ERROR<br>
-      <small>${hotfixEscapeHtml(message || "Check Firebase Database Rules and admin login.")}</small>
-    </div>
-  `;
 }
 
 async function bootRfidHotfix() {
@@ -125,57 +65,8 @@ async function bootRfidHotfix() {
     }
   };
 
-  const startOwnerListWatch = () => {
-    if (ownerListUnsubscribe) return;
-
-    const adminButton = document.getElementById("adminAccessBtn");
-    const adminActive = adminButton?.dataset.admin === "true";
-
-    if (!adminActive) {
-      ownerListRetryTimer = setTimeout(startOwnerListWatch, 1000);
-      return;
-    }
-
-    try {
-      ownerListUnsubscribe = service.subscribeRfidUsers(
-        users => renderOwnerList(users, service),
-        error => {
-          console.error("RFID hotfix owner list sync failed", error);
-          ownerListUnsubscribe = null;
-          showOwnerListSyncError(error?.message);
-          ownerListRetryTimer = setTimeout(startOwnerListWatch, 2000);
-        }
-      );
-    } catch (error) {
-      ownerListUnsubscribe = null;
-      ownerListRetryTimer = setTimeout(startOwnerListWatch, 1000);
-    }
-  };
-
   startStationWatch();
-  startOwnerListWatch();
-
-  setInterval(() => {
-    clearStaleRfidUi();
-
-    const adminButton = document.getElementById("adminAccessBtn");
-    const adminActive = adminButton?.dataset.admin === "true";
-
-    if (!adminActive && ownerListUnsubscribe) {
-      ownerListUnsubscribe();
-      ownerListUnsubscribe = null;
-    }
-
-    if (adminActive && !ownerListUnsubscribe && !ownerListRetryTimer) {
-      startOwnerListWatch();
-    }
-
-    if (ownerListRetryTimer) {
-      clearTimeout(ownerListRetryTimer);
-      ownerListRetryTimer = null;
-      startOwnerListWatch();
-    }
-  }, 1500);
+  setInterval(clearStaleRfidUi, 1000);
 }
 
 if (document.readyState === "loading") {
