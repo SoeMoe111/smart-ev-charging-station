@@ -45,7 +45,7 @@
       }
     },
     "rfidUsers": {
-      ".read": "auth != null && auth.uid === 'fM6p0sQzQbaqKAmuQFGA6mNolJU2'",
+      ".read": "auth != null && (auth.uid === 'fM6p0sQzQbaqKAmuQFGA6mNolJU2' || auth.uid === 'MNkBqWOKqjYeYSXSjvIKxc9ChzB3')",
       ".write": "auth != null && auth.uid === 'fM6p0sQzQbaqKAmuQFGA6mNolJU2'",
       ".indexOn": ["uid", "active"],
       "$userId": {
@@ -81,6 +81,7 @@
       ".write": "auth != null && auth.uid === 'fM6p0sQzQbaqKAmuQFGA6mNolJU2'",
       ".indexOn": ["timestamp", "uid", "granted"],
       "$eventId": {
+        ".write": "auth != null && auth.uid === 'MNkBqWOKqjYeYSXSjvIKxc9ChzB3' && !data.exists() && newData.exists() && newData.child('createdBy').val() === auth.uid",
         ".validate": "newData.hasChildren(['uid', 'granted', 'source', 'timestamp', 'createdBy'])",
         "uid": {
           ".validate": "newData.isString() && newData.val().length <= 30"
@@ -111,7 +112,17 @@
     "stations": {
       ".read": "auth != null",
       ".write": "auth != null && auth.uid === 'fM6p0sQzQbaqKAmuQFGA6mNolJU2'",
-      ".indexOn": ["updatedAt"]
+      ".indexOn": ["updatedAt"],
+      "demo-station": {
+        "slots": {
+          "slot1": {
+            ".write": "auth != null && auth.uid === 'MNkBqWOKqjYeYSXSjvIKxc9ChzB3'"
+          }
+        },
+        "rfid": {
+          ".write": "auth != null && auth.uid === 'MNkBqWOKqjYeYSXSjvIKxc9ChzB3'"
+        }
+      }
     }
   }
 }
