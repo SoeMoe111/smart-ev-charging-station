@@ -222,9 +222,7 @@ async function installOwnerOnlyBehavior() {
     }
 
     try {
-      // Existing Firebase validation still requires a non-empty plate field.
-      // The UI hides this placeholder because cards belong to people, not vehicles.
-      await service.saveRfidUser({ name, uid, plate: "N/A" });
+      await service.saveRfidUser({ name, uid });
       form.reset();
       setScanMessage(
         `CARD OWNER REGISTERED<br>${escapeHtml(name)}<br>${escapeHtml(uid)}`,
@@ -245,7 +243,7 @@ async function installOwnerOnlyBehavior() {
 
     try {
       for (const [uid, name] of Object.entries(PROJECT_CARD_OWNERS)) {
-        await service.saveRfidUser({ name, uid, plate: "N/A" });
+        await service.saveRfidUser({ name, uid });
       }
 
       setScanMessage(
