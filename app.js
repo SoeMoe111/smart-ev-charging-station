@@ -13,7 +13,7 @@ import {
   deleteAllRfidUsers,
   subscribeStation,
   normalizeUid
-} from "./firebase-service.js";
+} from "./firebase-service.js?v=20260914-relay-v1";
 
 // ============================================
 // SMART EV CHARGING STATION - FIREBASE APP
@@ -106,10 +106,10 @@ function setCloudStatus(mode, message) {
   if (banner) {
     if (mode === "cloud") {
       banner.textContent =
-        "Booking, RFID and fresh station data are synchronized through Firebase Realtime Database.";
+        "Booking, RFID and fresh station data are synchronized securely through the Firebase relay.";
     } else if (mode === "station-offline") {
       banner.textContent =
-        "Firebase is connected. Waiting for fresh live data from the ESP32 station.";
+        "Cloud relay is connected. Waiting for fresh live data from the ESP32 station.";
     } else {
       banner.textContent =
         "Firebase is unavailable. Local demo storage remains active so the interface is safe to test.";

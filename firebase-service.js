@@ -7,13 +7,16 @@ const FIREBASE_VERSION = "12.18.0";
 const FIREBASE_CDN =
   `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}`;
 
+const FIREBASE_RELAY_URL =
+  "https://smart-ev-firebase-relay.ldqr-501416499.chatgpt.site/firebase";
+
+const RELAY_POLL_INTERVAL_MS = 2000;
+
 const STATION_ID = "demo-station";
 export const ADMIN_UID = "fM6p0sQzQbaqKAmuQFGA6mNolJU2";
 
 let authSdk;
-let databaseSdk;
 let auth;
-let database;
 let currentUser;
 
 export function normalizeUid(value) {
@@ -29,8 +32,8 @@ function uidKey(value) {
   return normalizeUid(value).replaceAll(" ", "-");
 }
 
-function snapshotList(snapshot) {
-  const value = snapshot.val() || {};
+function snapshotList(value) {
+  value = value || {};
 
   return Object.entries(value).map(([id, item]) => ({
     id,
@@ -39,7 +42,7 @@ function snapshotList(snapshot) {
 }
 
 function requireConnection() {
-  if (!database || !currentUser) {
+  if (!auth || !currentUser) {
     throw new Error("Firebase is not connected.");
   }
 }
@@ -74,6 +77,93 @@ function waitForInitialAuthState() {
   });
 }
 
+function relayUrl(path) {
+  const normalizedPath = String(path || "")
+    .replace(/^\/+/, "")
+    .replace(/\/+$/, "");
+
+  return `${FIREBASE_RELAY_URL}/${normalizedPath}.json`;
+}
+
+async function relayRequest(path, options = {}) {
+  requireConnection();
+
+  const token = await currentUser.getIdToken();
+  const method = options.method || "GET";
+  const headers = {
+    Authorization: `Bearer ${token}`
+  };
+
+  const request = {
+    method,
+    headers,
+    cache: "no-store"
+  };
+
+  if (Object.hasOwn(options, "body")) {
+    headers["Content-Type"] = "application/json";
+    request.body = JSON.stringify(options.body);
+  }
+
+  const response = await fetch(relayUrl(path), request);
+  const responseText = await response.text();
+  let result = null;
+
+  if (responseText) {
+    try {
+      result = JSON.parse(responseText);
+    } catch {
+      result = responseText;
+    }
+  }
+
+  if (!response.ok) {
+    const detail = typeof result === "object"
+      ? result?.error || result?.message
+      : result;
+
+    throw new Error(
+      `Firebase relay request failed (HTTP ${response.status})` +
+      (detail ? `: ${detail}` : "")
+    );
+  }
+
+  return result;
+}
+
+function subscribeRelay(path, transform, callback, errorCallback) {
+  let active = true;
+  let timer = null;
+
+  const poll = async () => {
+    try {
+      const value = await relayRequest(path);
+
+      if (active) {
+        callback(transform(value));
+      }
+    } catch (error) {
+      if (active) {
+        errorCallback?.(error);
+      }
+    } finally {
+      if (active) {
+        timer = setTimeout(poll, RELAY_POLL_INTERVAL_MS);
+      }
+    }
+  };
+
+  poll();
+
+  return () => {
+    active = false;
+
+    if (timer) {
+      clearTimeout(timer);
+    }
+  };
+}
+
 export async function connectFirebase() {
   if (!firebaseConfigured) {
     return {
@@ -82,20 +172,17 @@ export async function connectFirebase() {
     };
   }
 
-  const [appSdk, loadedAuthSdk, loadedDatabaseSdk] =
+  const [appSdk, loadedAuthSdk] =
     await Promise.all([
       import(`${FIREBASE_CDN}/firebase-app.js`),
-      import(`${FIREBASE_CDN}/firebase-auth.js`),
-      import(`${FIREBASE_CDN}/firebase-database.js`)
+      import(`${FIREBASE_CDN}/firebase-auth.js`)
     ]);
 
   authSdk = loadedAuthSdk;
-  databaseSdk = loadedDatabaseSdk;
 
   const app = appSdk.initializeApp(firebaseConfig);
 
   auth = authSdk.getAuth(app);
-  database = databaseSdk.getDatabase(app);
 
   await authSdk.setPersistence(
     auth,
@@ -170,9 +257,10 @@ export async function signOutAdmin() {
 export function subscribeBookings(callback, errorCallback) {
   requireConnection();
 
-  return databaseSdk.onValue(
-    databaseSdk.ref(database, "bookings"),
-    snapshot => callback(snapshotList(snapshot)),
+  return subscribeRelay(
+    "bookings",
+    snapshotList,
+    callback,
     errorCallback
   );
 }
@@ -180,41 +268,41 @@ export function subscribeBookings(callback, errorCallback) {
 export async function createBooking(booking) {
   requireConnection();
 
-  const bookingRef = databaseSdk.push(
-    databaseSdk.ref(database, "bookings")
-  );
-
-  await databaseSdk.set(bookingRef, {
-    ...booking,
-    uid: normalizeUid(booking.uid),
-    createdAt: databaseSdk.serverTimestamp(),
-    createdBy: currentUser.uid,
-    status: "confirmed"
+  await relayRequest("bookings", {
+    method: "POST",
+    body: {
+      ...booking,
+      uid: normalizeUid(booking.uid),
+      createdAt: { ".sv": "timestamp" },
+      createdBy: currentUser.uid,
+      status: "confirmed"
+    }
   });
 }
 
 export async function deleteBooking(id) {
   requireConnection();
 
-  await databaseSdk.remove(
-    databaseSdk.ref(database, `bookings/${id}`)
-  );
+  await relayRequest(`bookings/${id}`, {
+    method: "DELETE"
+  });
 }
 
 export async function deleteAllBookings() {
   requireConnection();
 
-  await databaseSdk.remove(
-    databaseSdk.ref(database, "bookings")
-  );
+  await relayRequest("bookings", {
+    method: "DELETE"
+  });
 }
 
 export function subscribeRfidUsers(callback, errorCallback) {
   requireConnection();
 
-  return databaseSdk.onValue(
-    databaseSdk.ref(database, "rfidUsers"),
-    snapshot => callback(snapshotList(snapshot)),
+  return subscribeRelay(
+    "rfidUsers",
+    snapshotList,
+    callback,
     errorCallback
   );
 }
@@ -229,32 +317,32 @@ export async function saveRfidUser(user) {
     throw new Error("RFID UID is required.");
   }
 
-  await databaseSdk.set(
-    databaseSdk.ref(database, `rfidUsers/${key}`),
-    {
+  await relayRequest(`rfidUsers/${key}`, {
+    method: "PUT",
+    body: {
       name: String(user.name || "").trim(),
       uid: normalizedUid,
       active: true,
-      updatedAt: databaseSdk.serverTimestamp(),
+      updatedAt: { ".sv": "timestamp" },
       updatedBy: currentUser.uid
     }
-  );
+  });
 }
 
 export async function deleteRfidUser(id) {
   requireConnection();
 
-  await databaseSdk.remove(
-    databaseSdk.ref(database, `rfidUsers/${id}`)
-  );
+  await relayRequest(`rfidUsers/${id}`, {
+    method: "DELETE"
+  });
 }
 
 export async function deleteAllRfidUsers() {
   requireConnection();
 
-  await databaseSdk.remove(
-    databaseSdk.ref(database, "rfidUsers")
-  );
+  await relayRequest("rfidUsers", {
+    method: "DELETE"
+  });
 }
 
 export async function recordAccessEvent({
@@ -266,30 +354,27 @@ export async function recordAccessEvent({
 }) {
   requireConnection();
 
-  const eventRef = databaseSdk.push(
-    databaseSdk.ref(database, "accessEvents")
-  );
-
-  await databaseSdk.set(eventRef, {
-    uid: normalizeUid(uid),
-    granted,
-    userName,
-    plate,
-    source,
-    timestamp: databaseSdk.serverTimestamp(),
-    createdBy: currentUser.uid
+  await relayRequest("accessEvents", {
+    method: "POST",
+    body: {
+      uid: normalizeUid(uid),
+      granted,
+      userName,
+      plate,
+      source,
+      timestamp: { ".sv": "timestamp" },
+      createdBy: currentUser.uid
+    }
   });
 }
 
 export function subscribeStation(callback, errorCallback) {
   requireConnection();
 
-  return databaseSdk.onValue(
-    databaseSdk.ref(
-      database,
-      `stations/${STATION_ID}`
-    ),
-    snapshot => callback(snapshot.val() || {}),
+  return subscribeRelay(
+    `stations/${STATION_ID}`,
+    value => value || {},
+    callback,
     errorCallback
   );
 }
