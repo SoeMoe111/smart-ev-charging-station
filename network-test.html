@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Smart EV Network Test</title>
+  <style>
+    body{font-family:system-ui,-apple-system,sans-serif;margin:0;background:#071827;color:#eef7ff}
+    main{max-width:720px;margin:auto;padding:24px}
+    h1{font-size:1.5rem;margin:0 0 8px}.muted{color:#9fb3c8}.card{background:#102536;border:1px solid #254157;border-radius:16px;padding:16px;margin:14px 0}.row{display:flex;gap:12px;align-items:center;margin:10px 0}.dot{width:12px;height:12px;border-radius:50%;background:#f2b544;flex:0 0 auto}.pass .dot{background:#32d296}.fail .dot{background:#ff5d73}pre{white-space:pre-wrap;word-break:break-word;background:#07131d;padding:12px;border-radius:12px;color:#c8d9e8}button{border:0;border-radius:12px;padding:12px 16px;font-weight:700;background:#32d296;color:#062019}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Smart EV Charging Station — Network Test</h1>
+  <p class="muted">Tests browser internet, Firebase Authentication, and live Realtime Database access without the ESP32.</p>
+
+  <div class="card">
+    <div id="browser" class="row"><span class="dot"></span><span>Browser internet: checking…</span></div>
+    <div id="auth" class="row"><span class="dot"></span><span>Firebase authentication: checking…</span></div>
+    <div id="db" class="row"><span class="dot"></span><span>Realtime Database: checking…</span></div>
+    <div id="station" class="row"><span class="dot"></span><span>Station live data: checking…</span></div>
+  </div>
+
+  <button id="retry">RUN TEST AGAIN</button>
+  <pre id="details">Starting test…</pre>
+</main>
+
+<script type="module">
+  import { connectFirebase, subscribeStation } from './firebase-service.js';
+
+  const details = document.getElementById('details');
+  const retry = document.getElementById('retry');
+
+  function status(id, mode, text){
+    const el = document.getElementById(id);
+    el.className = `row ${mode}`;
+    el.querySelector('span:last-child').textContent = text;
+  }
+
+  async function run(){
+    details.textContent = 'Starting test…';
+    status('browser', navigator.onLine ? 'pass' : 'fail', `Browser internet: ${navigator.onLine ? 'ONLINE' : 'OFFLINE'}`);
+    status('auth','', 'Firebase authentication: checking…');
+    status('db','', 'Realtime Database: checking…');
+    status('station','', 'Station live data: checking…');
+
+    try {
+      const result = await connectFirebase();
+      if (!result.connected) {
+        status('auth','fail','Firebase authentication / database: FAILED');
+        status('db','fail','Realtime Database: NOT READY');
+        status('station','fail','Station live data: NOT READY');
+        details.textContent = `Connection failed: ${result.reason || 'Unknown error'}`;
+        return;
+      }
+
+      status('auth','pass', `Firebase authentication: PASS (${result.isAdmin ? 'ADMIN' : result.isAnonymous ? 'ANONYMOUS' : 'USER'})`);
+      status('db','pass','Realtime Database: PASS');
+
+      let finished = false;
+      const stop = subscribeStation(
+        station => {
+          if (finished) return;
+          finished = true;
+          stop?.();
+          const slot1 = station?.slots?.slot1 || {};
+          status('station','pass', `Station live data: PASS (${slot1.state || 'data received'})`);
+          details.textContent = JSON.stringify({
+            uid: result.uid,
+            slot1,
+            rfid: station?.rfid || {}
+          }, null, 2);
+        },
+        error => {
+          details.textContent = `Station read error: ${error?.message || error}`;
+        }
+      );
+
+      setTimeout(() => {
+        if (finished) return;
+        finished = true;
+        stop?.();
+        status('station','fail','Station live data: TIMEOUT');
+        details.textContent += '\nNo station snapshot was received within 10 seconds.';
+      }, 10000);
+    } catch (error) {
+      status('auth','fail','Firebase authentication: ERROR');
+      status('db','fail','Realtime Database: ERROR');
+      status('station','fail','Station live data: ERROR');
+      details.textContent = String(error?.stack || error);
+    }
+  }
+
+  retry.addEventListener('click', run);
+  run();
+</script>
+</body>
+</html>
