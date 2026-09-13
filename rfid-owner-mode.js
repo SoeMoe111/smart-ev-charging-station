@@ -3,7 +3,7 @@
 
 const PROJECT_CARD_OWNERS = Object.freeze({
   "7A BB E4 06": "Soe Moe",
-  "BD B0 50 07": "Pwint Phyu Hlaing",
+  "BD B0 50 07": "Myint Zu Khin",
   "8D C9 0D 07": "Kyaw Zayar Min"
 });
 
@@ -39,6 +39,55 @@ function setScanMessage(html, mode = "") {
   if (!result) return;
   result.className = mode ? `scan-result ${mode}` : "scan-result";
   result.innerHTML = html;
+}
+
+function stationLooksOnline() {
+  const states = [
+    document.getElementById("slot1Status")?.textContent,
+    document.getElementById("slot2Status")?.textContent
+  ]
+    .map(value => String(value || "").trim().toUpperCase())
+    .filter(Boolean);
+
+  return states.some(state =>
+    state !== "OFFLINE" &&
+    state !== "WAITING FOR DATA"
+  );
+}
+
+function syncReaderAvailability() {
+  const online = stationLooksOnline();
+  const readerStatus = document.getElementById("readerStatus");
+  const latestScanUid = document.getElementById("latestScanUid");
+  const latestScanTime = document.getElementById("latestScanTime");
+  const enrollDetectedUid = document.getElementById("enrollDetectedUid");
+  const enrollDetectedHint = document.getElementById("enrollDetectedHint");
+  const enrollButton = document.getElementById("enrollCardBtn");
+
+  if (!online) {
+    if (readerStatus) readerStatus.textContent = "READER OFFLINE";
+    if (latestScanUid) latestScanUid.textContent = "No live card data";
+    if (latestScanTime) latestScanTime.textContent = "ESP32 telemetry offline";
+    if (enrollDetectedUid) enrollDetectedUid.textContent = "WAITING FOR CARD";
+    if (enrollDetectedHint) enrollDetectedHint.textContent = "Power the ESP32 and wait for live telemetry before tapping a card.";
+    if (enrollButton) enrollButton.disabled = true;
+
+    const result = document.getElementById("scanResult");
+    if (result) {
+      result.className = "scan-result";
+      result.textContent = "WAITING FOR HARDWARE SCAN";
+    }
+    return false;
+  }
+
+  if (readerStatus && (
+    readerStatus.textContent.trim() === "READER OFFLINE" ||
+    readerStatus.textContent.trim() === "WAITING FOR ESP32"
+  )) {
+    readerStatus.textContent = "READER ONLINE · WAITING";
+  }
+
+  return true;
 }
 
 function applyOwnerOnlyUi() {
@@ -97,6 +146,8 @@ function watchDetectedCard() {
   if (!uidNode) return;
 
   const syncOwner = () => {
+    if (!stationLooksOnline()) return;
+
     const uid = getDetectedUid();
     const owner = getPresetOwner(uid);
     const nameInput = document.getElementById("rfName");
@@ -141,6 +192,11 @@ async function installOwnerOnlyBehavior() {
     event.preventDefault();
     event.stopImmediatePropagation();
 
+    if (!stationLooksOnline()) {
+      syncReaderAvailability();
+      return;
+    }
+
     const uid = getDetectedUid();
     const nameInput = document.getElementById("rfName");
     const name = String(nameInput?.value || "").trim();
@@ -182,7 +238,7 @@ async function installOwnerOnlyBehavior() {
       }
 
       setScanMessage(
-        "3 PROJECT CARD OWNERS REGISTERED<br>Soe Moe · Pwint Phyu Hlaing · Kyaw Zayar Min",
+        "3 PROJECT CARD OWNERS REGISTERED<br>Soe Moe · Myint Zu Khin · Kyaw Zayar Min",
         "granted"
       );
       button.textContent = "3 PROJECT CARDS REGISTERED";
@@ -198,6 +254,11 @@ async function installOwnerOnlyBehavior() {
   const startStationMonitor = () => {
     try {
       service.subscribeStation(station => {
+        if (!stationLooksOnline()) {
+          syncReaderAvailability();
+          return;
+        }
+
         const latest = station?.rfid?.latestScan || {};
         const uid = normalizeUid(latest.uid);
         if (!uid) return;
@@ -250,6 +311,9 @@ function bootOwnerMode() {
   installOwnerOnlyBehavior().catch(error => {
     console.error("RFID owner-only mode failed to start", error);
   });
+
+  syncReaderAvailability();
+  setInterval(syncReaderAvailability, 500);
 }
 
 if (document.readyState === "loading") {
