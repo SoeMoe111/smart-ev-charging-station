@@ -47,7 +47,7 @@
         if(!user || user.uid!==ADMIN_UID) throw new Error("ADMIN login is required on the main website first.");
         status.textContent="Restoring cards to Firebase...";
         for(const [key,uid,name] of cards){
-          await dbSdk.set(dbSdk.ref(db,`rfidUsers/${key}`),{name,plate:"N/A",uid,active:true,updatedAt:dbSdk.serverTimestamp(),updatedBy:user.uid});
+          await dbSdk.set(dbSdk.ref(db,`rfidUsers/${key}`),{name,uid,active:true,updatedAt:dbSdk.serverTimestamp(),updatedBy:user.uid});
         }
         status.className="status ok"; status.textContent="SUCCESS\n3 project cards restored.\nSoe Moe\nMyint Zu Khin\nKyaw Zayar Min"; button.textContent="RESTORED";
       }catch(error){
