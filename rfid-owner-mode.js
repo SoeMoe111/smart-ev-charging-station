@@ -7,6 +7,9 @@ const PROJECT_CARD_OWNERS = Object.freeze({
   "8D C9 0D 07": "Kyaw Zayar Min"
 });
 
+const TELEMETRY_STALE_MS = 15000;
+let lastStationSnapshot = {};
+
 function normalizeUid(value) {
   return String(value ?? "")
     .trim()
@@ -41,22 +44,22 @@ function setScanMessage(html, mode = "") {
   result.innerHTML = html;
 }
 
-function stationLooksOnline() {
-  const states = [
-    document.getElementById("slot1Status")?.textContent,
-    document.getElementById("slot2Status")?.textContent
-  ]
-    .map(value => String(value || "").trim().toUpperCase())
-    .filter(Boolean);
+function slotTimestampIsFresh(slot = {}) {
+  const updatedAt = Number(slot.updatedAt);
+  if (!Number.isFinite(updatedAt) || updatedAt <= 0) return false;
 
-  return states.some(state =>
-    state !== "OFFLINE" &&
-    state !== "WAITING FOR DATA"
-  );
+  const age = Date.now() - updatedAt;
+  return age >= 0 && age <= TELEMETRY_STALE_MS;
+}
+
+function stationIsFresh(station = lastStationSnapshot) {
+  const slot1 = station?.slots?.slot1 || {};
+  const slot2 = station?.slots?.slot2 || {};
+  return slotTimestampIsFresh(slot1) || slotTimestampIsFresh(slot2);
 }
 
 function syncReaderAvailability() {
-  const online = stationLooksOnline();
+  const online = stationIsFresh();
   const readerStatus = document.getElementById("readerStatus");
   const latestScanUid = document.getElementById("latestScanUid");
   const latestScanTime = document.getElementById("latestScanTime");
@@ -69,21 +72,21 @@ function syncReaderAvailability() {
     if (latestScanUid) latestScanUid.textContent = "No live card data";
     if (latestScanTime) latestScanTime.textContent = "ESP32 telemetry offline";
     if (enrollDetectedUid) enrollDetectedUid.textContent = "WAITING FOR CARD";
-    if (enrollDetectedHint) enrollDetectedHint.textContent = "Power the ESP32 and wait for live telemetry before tapping a card.";
+    if (enrollDetectedHint) {
+      enrollDetectedHint.textContent =
+        "Power the ESP32 and wait for live telemetry before tapping a card.";
+    }
     if (enrollButton) enrollButton.disabled = true;
 
     const result = document.getElementById("scanResult");
-    if (result) {
+    if (result && !result.classList.contains("granted")) {
       result.className = "scan-result";
       result.textContent = "WAITING FOR HARDWARE SCAN";
     }
     return false;
   }
 
-  if (readerStatus && (
-    readerStatus.textContent.trim() === "READER OFFLINE" ||
-    readerStatus.textContent.trim() === "WAITING FOR ESP32"
-  )) {
+  if (readerStatus && readerStatus.textContent.trim() === "READER OFFLINE") {
     readerStatus.textContent = "READER ONLINE · WAITING";
   }
 
@@ -102,12 +105,18 @@ function applyOwnerOnlyUi() {
     const title = steps[0].querySelector("b");
     const body = steps[0].querySelector("p");
     if (title) title.textContent = "Assign card owner";
-    if (body) body.textContent = "Admin assigns only the card owner's name. No vehicle plate is stored with the RFID card.";
+    if (body) {
+      body.textContent =
+        "Admin assigns only the card owner's name. No vehicle plate is stored with the RFID card.";
+    }
   }
 
   if (steps[2]) {
     const body = steps[2].querySelector("p");
-    if (body) body.textContent = "The card identifies the person. The vehicle plate is taken from that person's active booking.";
+    if (body) {
+      body.textContent =
+        "The card identifies the person. The vehicle plate is taken from that person's active booking.";
+    }
   }
 
   const formTitle = document.querySelector("#rfidForm .panel-head h3");
@@ -119,7 +128,8 @@ function applyOwnerOnlyUi() {
 
   const bookingNote = document.querySelector("#booking .booking-info .note-box");
   if (bookingNote) {
-    bookingNote.textContent = "Driver Name must match the registered RFID card owner. Vehicle Plate belongs to the booking only and is not stored on the card.";
+    bookingNote.textContent =
+      "Driver Name must match the registered RFID card owner. Vehicle Plate belongs to the booking only and is not stored on the card.";
   }
 
   const style = document.createElement("style");
@@ -136,7 +146,7 @@ function applyOwnerOnlyUi() {
     button.id = "registerProjectCardsBtn";
     button.type = "button";
     button.className = "secondary-btn wide";
-    button.textContent = "REGISTER 3 PROJECT CARDS";
+    button.textContent = "RESTORE 3 PROJECT CARDS";
     enrollButton.insertAdjacentElement("afterend", button);
   }
 }
@@ -146,7 +156,7 @@ function watchDetectedCard() {
   if (!uidNode) return;
 
   const syncOwner = () => {
-    if (!stationLooksOnline()) return;
+    if (!stationIsFresh()) return;
 
     const uid = getDetectedUid();
     const owner = getPresetOwner(uid);
@@ -188,11 +198,10 @@ async function installOwnerOnlyBehavior() {
     const form = event.target;
     if (!(form instanceof HTMLFormElement) || form.id !== "rfidForm") return;
 
-    // Override the original enrollment handler so plate/email are never written.
     event.preventDefault();
     event.stopImmediatePropagation();
 
-    if (!stationLooksOnline()) {
+    if (!stationIsFresh()) {
       syncReaderAvailability();
       return;
     }
@@ -213,7 +222,9 @@ async function installOwnerOnlyBehavior() {
     }
 
     try {
-      await service.saveRfidUser({ name, uid });
+      // Existing Firebase validation still requires a non-empty plate field.
+      // The UI hides this placeholder because cards belong to people, not vehicles.
+      await service.saveRfidUser({ name, uid, plate: "N/A" });
       form.reset();
       setScanMessage(
         `CARD OWNER REGISTERED<br>${escapeHtml(name)}<br>${escapeHtml(uid)}`,
@@ -230,37 +241,45 @@ async function installOwnerOnlyBehavior() {
     if (!button) return;
 
     button.disabled = true;
-    button.textContent = "REGISTERING...";
+    button.textContent = "RESTORING...";
 
     try {
       for (const [uid, name] of Object.entries(PROJECT_CARD_OWNERS)) {
-        await service.saveRfidUser({ name, uid });
+        await service.saveRfidUser({ name, uid, plate: "N/A" });
       }
 
       setScanMessage(
-        "3 PROJECT CARD OWNERS REGISTERED<br>Soe Moe · Myint Zu Khin · Kyaw Zayar Min",
+        "3 PROJECT CARD OWNERS RESTORED<br>Soe Moe · Myint Zu Khin · Kyaw Zayar Min",
         "granted"
       );
-      button.textContent = "3 PROJECT CARDS REGISTERED";
+      button.textContent = "3 PROJECT CARDS RESTORED";
     } catch (error) {
-      console.error("Project card registration failed", error);
-      setScanMessage("CARD REGISTRATION FAILED · ADMIN LOGIN REQUIRED", "denied");
+      console.error("Project card restore failed", error);
+      setScanMessage("CARD RESTORE FAILED · ADMIN LOGIN REQUIRED", "denied");
       button.disabled = false;
-      button.textContent = "REGISTER 3 PROJECT CARDS";
+      button.textContent = "RESTORE 3 PROJECT CARDS";
     }
   });
 
-  // Render the owner name on every physical scan, even for denied/no-booking cases.
   const startStationMonitor = () => {
     try {
       service.subscribeStation(station => {
-        if (!stationLooksOnline()) {
-          syncReaderAvailability();
+        lastStationSnapshot = station || {};
+
+        if (!syncReaderAvailability()) {
           return;
         }
 
         const latest = station?.rfid?.latestScan || {};
         const uid = normalizeUid(latest.uid);
+
+        const readerStatus = document.getElementById("readerStatus");
+        if (readerStatus) {
+          readerStatus.textContent = uid
+            ? "CARD DETECTED"
+            : "READER ONLINE · WAITING";
+        }
+
         if (!uid) return;
 
         const owner = String(latest.userName || getPresetOwner(uid) || "").trim();
@@ -271,7 +290,7 @@ async function installOwnerOnlyBehavior() {
         if (latest.granted === true) {
           setScanMessage(
             `ACCESS GRANTED<br>${escapeHtml(owner || "Registered user")}` +
-            `${plate ? `<br>BOOKED VEHICLE: ${escapeHtml(plate)}` : ""}` +
+            `${plate && plate !== "N/A" ? `<br>BOOKED VEHICLE: ${escapeHtml(plate)}` : ""}` +
             `${slot ? `<br>${escapeHtml(slot)}` : ""}`,
             "granted"
           );
@@ -297,7 +316,6 @@ async function installOwnerOnlyBehavior() {
         console.error("Owner-mode station monitor failed", error);
       });
     } catch (error) {
-      // Firebase startup may still be in progress. Retry shortly.
       setTimeout(startStationMonitor, 1000);
     }
   };
@@ -313,7 +331,7 @@ function bootOwnerMode() {
   });
 
   syncReaderAvailability();
-  setInterval(syncReaderAvailability, 500);
+  setInterval(syncReaderAvailability, 1000);
 }
 
 if (document.readyState === "loading") {
