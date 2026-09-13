@@ -116,7 +116,8 @@ button{
 }
 
 .system-pill[data-mode="local"] .pulse,
-.system-pill[data-mode="starting"] .pulse{
+.system-pill[data-mode="starting"] .pulse,
+.system-pill[data-mode="station-offline"] .pulse{
   background:var(--amber);
   box-shadow:0 0 0 5px rgba(255,184,77,.12);
 }
