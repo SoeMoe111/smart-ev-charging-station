@@ -19,9 +19,10 @@ export const firebaseConfigured = [
 ].every(value => value && !value.startsWith("PASTE_"));
 
 // Load the project-specific RFID owner-only layer after the main module graph
-// has finished evaluating. This keeps vehicle plates in bookings only.
+// has finished evaluating. The query string forces GitHub Pages/mobile browsers
+// to load the latest RFID code instead of an older cached copy.
 setTimeout(() => {
-  import("./rfid-owner-mode.js").catch(error => {
+  import("./rfid-owner-mode.js?v=20260913-1528").catch(error => {
     console.error("RFID owner mode could not be loaded", error);
   });
 }, 0);
