@@ -621,17 +621,28 @@ function renderUsers() {
 
   if (!rfidUsersList) return;
 
-  if (!rfidUsers.length) {
-
-    rfidUsersList.innerHTML = `
-      <div class="empty-state">
-        No RFID users registered yet.
-      </div>
-    `;
-
-    return;
-  }
-
+if (!rfidUsers.length) {
+  rfidUsers = [
+    {
+      id: "7A-BB-E4-06",
+      name: "Soe Moe",
+      plate: "N/A",
+      uid: "7A BB E4 06"
+    },
+    {
+      id: "8D-C9-0D-07",
+      name: "Kyaw Zayar Min",
+      plate: "N/A",
+      uid: "8D C9 0D 07"
+    },
+    {
+      id: "BD-B0-50-07",
+      name: "Myint Zu Khin",
+      plate: "N/A",
+      uid: "BD B0 50 07"
+    }
+  ];
+}
 
   rfidUsersList.innerHTML =
     rfidUsers.map(
