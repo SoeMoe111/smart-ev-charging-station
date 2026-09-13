@@ -232,7 +232,7 @@ export async function saveRfidUser(user) {
   await databaseSdk.set(
     databaseSdk.ref(database, `rfidUsers/${key}`),
     {
-      ...user,
+      name: String(user.name || "").trim(),
       uid: normalizedUid,
       active: true,
       updatedAt: databaseSdk.serverTimestamp(),
