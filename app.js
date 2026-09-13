@@ -104,15 +104,24 @@ function setCloudStatus(mode, message) {
   }
 
   if (banner) {
-    banner.textContent = mode === "cloud"
-      ? "Booking, RFID and station data are synchronized through Firebase Realtime Database."
-      : "Firebase is unavailable. Local demo storage remains active so the interface is safe to test.";
+    if (mode === "cloud") {
+      banner.textContent =
+        "Booking, RFID and fresh station data are synchronized through Firebase Realtime Database.";
+    } else if (mode === "station-offline") {
+      banner.textContent =
+        "Firebase is connected. Waiting for fresh live data from the ESP32 station.";
+    } else {
+      banner.textContent =
+        "Firebase is unavailable. Local demo storage remains active so the interface is safe to test.";
+    }
   }
 
   if (tag) {
     tag.textContent = mode === "cloud"
       ? "FIREBASE LIVE"
-      : "LOCAL FALLBACK";
+      : mode === "station-offline"
+        ? "STATION OFFLINE"
+        : "LOCAL FALLBACK";
   }
 }
 
@@ -1115,15 +1124,20 @@ function applyStationTelemetry(station = {}) {
   const slot2 = station.slots?.slot2 || {};
 
   const slot1Live = applySlotTelemetry(1, slot1);
-const slot2Live = applySlotTelemetry(2, slot2);
+  const slot2Live = applySlotTelemetry(2, slot2);
   applyRfidStationState(station.rfid || {});
+
   if (!slot1Live && !slot2Live) {
-  setText("stationSupply", "-- V");
-  setText("stationCurrent", "-- A");
-  setText("stationPower", "-- W");
-  setText("stationProtection", "OFFLINE");
-  return;
+    setCloudStatus("station-offline", "STATION OFFLINE");
+    setText("stationSupply", "-- V");
+    setText("stationCurrent", "-- A");
+    setText("stationPower", "-- W");
+    setText("stationProtection", "OFFLINE");
+    return;
   }
+
+  setCloudStatus("cloud", "FIREBASE LIVE");
+
   const totalCurrent =
     finiteNumber(slot1.current) +
     finiteNumber(slot2.current);
@@ -1168,7 +1182,7 @@ async function startDataSync() {
     }
 
     firebaseMode = true;
-    setCloudStatus("cloud", "FIREBASE LIVE");
+    setCloudStatus("station-offline", "WAITING FOR STATION");
 
     applyAuthState(result);
 
