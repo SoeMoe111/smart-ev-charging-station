@@ -950,7 +950,76 @@ function finiteNumber(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
 }
+const TELEMETRY_STALE_MS = 15000;
+let lastStationSnapshot = {};
 
+function slotIsFresh(slot = {}) {
+  const updatedAt = Number(slot.updatedAt);
+
+  if (!Number.isFinite(updatedAt) || updatedAt <= 0) {
+    return false;
+  }
+
+  const age = Date.now() - updatedAt;
+
+  return age >= 0 && age <= TELEMETRY_STALE_MS;
+}
+
+function showSlotOffline(slotNumber) {
+  const prefix = `slot${slotNumber}`;
+
+  const card =
+    document.getElementById(`${prefix}Card`);
+
+  const badge =
+    document.getElementById(`${prefix}Status`);
+
+  const ring =
+    document.getElementById(`${prefix}SocRing`);
+
+  const relay =
+    document.getElementById(`${prefix}Relay`);
+
+  const protection =
+    document.getElementById(`${prefix}Protection`);
+
+  if (card) {
+    card.classList.remove("charging");
+    card.classList.add("hold");
+  }
+
+  if (badge) {
+    badge.textContent = "OFFLINE";
+    badge.className = "badge badge-amber";
+  }
+
+  if (ring) {
+    ring.style.setProperty("--p", 0);
+  }
+
+  if (relay) {
+    relay.textContent = "OFF";
+    relay.className = "warn";
+  }
+
+  if (protection) {
+    protection.textContent = "OFFLINE";
+    protection.className = "warn";
+  }
+
+  setText(`${prefix}Soc`, "--%");
+  setText(`${prefix}Voltage`, "-- V");
+  setText(`${prefix}Current`, "-- A");
+  setText(`${prefix}Power`, "-- W");
+  setText(`${prefix}Temperature`, "-- °C");
+
+  if (slotNumber === 1) {
+    setText("telemetrySoc", "--%");
+    setText("telemetryVoltage", "-- V");
+    setText("telemetryCurrent", "-- A");
+    setText("telemetryTemperature", "-- °C");
+  }
+}
 function slotStateLabel(state) {
   const labels = {
     ready: "READY",
@@ -965,6 +1034,10 @@ function slotStateLabel(state) {
 }
 
 function applySlotTelemetry(slotNumber, slot = {}) {
+    if (!slotIsFresh(slot)) {
+    showSlotOffline(slotNumber);
+    return false;
+    }
   const prefix = `slot${slotNumber}`;
   const state = String(slot.state || "offline").toLowerCase();
   const voltage = finiteNumber(slot.voltage);
@@ -1022,16 +1095,24 @@ function applySlotTelemetry(slotNumber, slot = {}) {
     setText("telemetryCurrent", `${current.toFixed(2)} A`);
     setText("telemetryTemperature", `${temperature.toFixed(1)} °C`);
   }
+  return true;
 }
 
 function applyStationTelemetry(station = {}) {
+  lastStationSnapshot = station || {};
   const slot1 = station.slots?.slot1 || {};
   const slot2 = station.slots?.slot2 || {};
 
-  applySlotTelemetry(1, slot1);
-  applySlotTelemetry(2, slot2);
+  const slot1Live = applySlotTelemetry(1, slot1);
+const slot2Live = applySlotTelemetry(2, slot2);
   applyRfidStationState(station.rfid || {});
-
+  if (!slot1Live && !slot2Live) {
+  setText("stationSupply", "-- V");
+  setText("stationCurrent", "-- A");
+  setText("stationPower", "-- W");
+  setText("stationProtection", "OFFLINE");
+  return;
+  }
   const totalCurrent =
     finiteNumber(slot1.current) +
     finiteNumber(slot2.current);
@@ -1114,6 +1195,11 @@ async function startDataSync() {
 }
 
 startDataSync();
+setInterval(() => {
+  if (firebaseMode) {
+    applyStationTelemetry(lastStationSnapshot);
+  }
+}, 3000);
 
 
 // ============================================
