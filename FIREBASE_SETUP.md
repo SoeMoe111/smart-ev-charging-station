@@ -1,6 +1,6 @@
 # Firebase integration setup
 
-This branch connects the existing GitHub Pages interface to Firebase while
+This site connects the existing GitHub Pages interface to Firebase while
 retaining local demo mode as a connection-failure fallback.
 
 ## Console settings
@@ -27,8 +27,24 @@ ESP32 firmware. The website accepts it only in the Firebase sign-in dialog.
 - The RFID administration page is hidden until the owner signs in.
 - Use demonstration names and plate numbers only because the shared booking
   schedule is readable by authenticated visitors.
-- A separate device identity will be added before ESP32 telemetry is allowed
-  to write directly to `stations/`.
+- The Slot 1 ESP32 uses its own Firebase Authentication identity. It can read
+  bookings and registered card owners, write only Slot 1 telemetry/RFID scan
+  state, and create its own access-event records. It cannot edit bookings,
+  RFID owners, Slot 2 telemetry, or other stations.
+
+## Deploying rule changes
+
+Committing `database.rules.json` to GitHub does not deploy it to Realtime
+Database. Publish it in **Firebase Console > Realtime Database > Rules**, or
+run the following from this repository after signing in with the project-owner
+Google account:
+
+```sh
+npx firebase-tools deploy --only database
+```
+
+The included `firebase.json` and `.firebaserc` point that command at this
+project and rules file.
 
 ## Realtime Database paths
 
