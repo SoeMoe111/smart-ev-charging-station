@@ -10,7 +10,8 @@ const FIREBASE_CDN =
 const FIREBASE_RELAY_URL =
   "https://smart-ev-firebase-relay.ldqr-501416499.chatgpt.site/firebase";
 
-const RELAY_POLL_INTERVAL_MS = 2000;
+// Match the ESP32's 5-second telemetry cadence and leave free-relay quota headroom.
+const RELAY_POLL_INTERVAL_MS = 5000;
 
 const STATION_ID = "demo-station";
 export const ADMIN_UID = "fM6p0sQzQbaqKAmuQFGA6mNolJU2";
