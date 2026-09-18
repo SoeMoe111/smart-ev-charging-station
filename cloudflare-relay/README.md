@@ -23,12 +23,27 @@ Cloudflare runtime၊ မြန်မာနိုင်ငံ network သို�
 
 ## Local verification
 
+Phone မှ read-only preflight ကို သီးခြားဖွင့်နိုင်သည်:
+
+[Cloudflare Read Check](https://soemoe111.github.io/smart-ev-charging-station/cloudflare-check.html)
+
+`RUN TEST` နှိပ်မှ Worker health၊ Firebase ID-token refresh၊ station read နဲ့
+booking read ကို တစ်ခါစစ်သည်။ Polling မရှိ၊ RTDB data မရေး/မဖျက်ပါ။ Existing
+login session ကိုမပယ်ပါ။ Session မရှိလျှင် anonymous Auth user အသစ်ဖြစ်နိုင်သည်။
+Public config ကို text အဖြစ်သာဖတ်၍ RFID hotfix modules ကိုမ execute လုပ်ပါ။
+Token၊ password၊ UID နဲ့ database payload ကိုမပြပါ။ Read PASS သည် browser/network
+test သာဖြစ်ပြီး admin/device write၊ ESP32 online၊ charging နဲ့ safety test မဟုတ်ပါ။
+ဤ test page files နှစ်ခုကို `main` တွင် သီးခြားထည့်ထားသော်လည်း existing
+`firebase-service.js`၊ config၊ live relay URL နဲ့ live 2-second polling ကိုမပြောင်းပါ။
+GitHub Pages build ပြီးမှ page အသစ်ရနိုင်သည်။
+
 Repository root မှ run ရန်:
 
 ```bash
 node --check firebase-service.js
 node --check cloudflare-relay/worker.mjs
 node --test cloudflare-relay/worker.test.mjs
+node --test cloudflare-relay/cloudflare-check.test.mjs
 ```
 
 Tests က fake upstream နဲ့ fake JWT-shaped token ကိုသာသုံးသည်။ Firebase data ကို
