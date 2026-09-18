@@ -1,8 +1,26 @@
 # October 8 Cloudflare relay preparation
 
-ဤ version က **ပြင်ဆင်ပြီးသား စမ်းသပ် branch သာဖြစ်သည်**။ Live Website၊
-ESP32 firmware နဲ့ လက်ရှိ relay URL ကို မပြောင်းထားပါ။ Local test PASS သည်
-Cloudflare runtime၊ မြန်မာနိုင်ငံ network သို့မဟုတ် ESP32 end-to-end test PASS ဟု မဆိုလိုပါ။
+ဤ branch က relay source/tests နဲ့ **5-second polling proposal** ကိုသိမ်းထားသည်။
+ဤ branch ၏ `firebase-service.js` ကို live version အဖြစ် မကူးတင်ရ။
+Local test PASS သည် ESP32 end-to-end test PASS ဟု မဆိုလိုပါ။
+
+## Latest migration status — September 19, 2026 (Myanmar time)
+
+- User phone/current network/VPN OFF မှ Worker health၊ Firebase ID-token refresh၊
+  station read နဲ့ booking read လေးခုလုံး PASS ကို screenshot ဖြင့်အတည်ပြုထားသည်။
+  New anonymous sign-in သို့မဟုတ် admin password login ကို သီးခြားအတည်မပြုရသေး။
+- Website `main` တွင် relay URL တစ်ကြောင်းတည်းကို
+  `https://smart-ev-firebase-relay.smoe49262.workers.dev/firebase` ပြောင်းတင်ထားသည်။
+  Commit: `5ae06c95394f440ec82f41e76af03a7852ad95ee`။
+  **Live polling သည် 2 seconds အတိုင်းဖြစ်သည်**။ Auth၊ UID၊ schema နဲ့ Rules မပြောင်းပါ။
+- Exact previous website ကို `backup-pre-cloudflare-web-20260919-e5aec421` branch
+  တွင်သိမ်းထားသည်။ Rollback လုပ်ရန် ဤ branch ၏ `firebase-service.js` ကိုသုံးနိုင်သည်။
+- Rollout validation 9 tests က fake transport ကိုသာသုံး၍ RTDB data ကို မရေး/မဖျက်ပါ။
+- User က live homepage Refresh လုပ်၍ booking display/admin access ပြန်စမ်းရန်ကျန်သည်။
+- **ESP32 ကိုမ flash ရသေးပါ**။ Device သည် previous ChatGPT relay ကိုသုံးနေဆဲဖြစ်သည်။
+  Website နဲ့ ESP32 က မတူသော relay URLs မှ same RTDB ကိုသုံးနိုင်သော်လည်း device ကို
+  Cloudflare URL ပြောင်းပြီး hardware tests လုပ်မှ old relay dependency ဖယ်နိုင်မည်။
+  ဒီမတိုင်ခင် old relay ကိုမဖျက်ရ။ ChatGPT account dependency အားလုံးပျောက်ပြီဟု မဆိုရ။
 
 ## ပြင်ထားသည့်အရာ
 
@@ -33,8 +51,8 @@ login session ကိုမပယ်ပါ။ Session မရှိလျှင်
 Public config ကို text အဖြစ်သာဖတ်၍ RFID hotfix modules ကိုမ execute လုပ်ပါ။
 Token၊ password၊ UID နဲ့ database payload ကိုမပြပါ။ Read PASS သည် browser/network
 test သာဖြစ်ပြီး admin/device write၊ ESP32 online၊ charging နဲ့ safety test မဟုတ်ပါ။
-ဤ test page files နှစ်ခုကို `main` တွင် သီးခြားထည့်ထားသော်လည်း existing
-`firebase-service.js`၊ config၊ live relay URL နဲ့ live 2-second polling ကိုမပြောင်းပါ။
+ဤ test page files နှစ်ခုကို သီးခြားထည့်သည့်အဆင့်တွင် existing code ကိုမပြောင်းခဲ့ပါ။
+နောက်ပိုင်း live relay URL ပြောင်းထားသည့်အခြေအနေကို အပေါ်က Latest migration status တွင်ကြည့်ရန်။
 GitHub Pages build ပြီးမှ page အသစ်ရနိုင်သည်။
 
 Repository root မှ run ရန်:
@@ -90,6 +108,13 @@ Tests က fake upstream နဲ့ fake JWT-shaped token ကိုသာသုံ
   Internet backup နဲ့ private firmware backup ပြင်ဆင်ရန်။
 
 ## Quota နဲ့ rollback
+
+Live 2-second website read streams နှစ်ခု၏ zero-latency baseline က 86,400
+requests/day ဖြစ်သည်။ ESP32 telemetry 5-second baseline 17,280 နဲ့ပေါင်းလျှင်
+103,680 ဖြစ်နိုင်သည်။ တကယ့် cadence တွင် network latency ပါဝင်ပြီး admin၊ device
+read/actions၊ retries နဲ့ tabs များက ထပ်ပေါင်းမည်။ Free quota ဖြင့် demo မတိုင်ခင်
+usage ကိုစစ်ရမည်၊ မလိုသော website tabs ကိုနေ့ညမဖွင့်ထားရ။ အောက်က 5-second budget
+သည် proposal အတွက်သာဖြစ်ပြီး live polling ပြောင်းပြီးသားဟု မယူဆရ။
 
 5-second polling အတွက် ပုံမှန် Website tab တစ်ခု၏ read streams နှစ်ခုသည်
 တစ်ရက်ခန့်မှန်းအများဆုံး 34,560 requests ဖြစ်သည်။ 5-second ESP32 telemetry baseline က
