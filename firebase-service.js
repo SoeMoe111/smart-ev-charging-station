@@ -8,7 +8,7 @@ const FIREBASE_CDN =
   `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}`;
 
 const FIREBASE_RELAY_URL =
-  "https://smart-ev-firebase-relay.ldqr-501416499.chatgpt.site/firebase";
+  "https://smart-ev-firebase-relay.smoe49262.workers.dev/firebase";
 
 const RELAY_POLL_INTERVAL_MS = 2000;
 
