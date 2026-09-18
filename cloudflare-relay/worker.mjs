@@ -84,8 +84,8 @@ async function readJsonBody(request) {
   }
 }
 
-export async function handleRequest(request, upstreamFetch = fetch,
-                                    { timeoutMs = 10000 } = {}) {
+async function handleRequest(request, upstreamFetch = fetch,
+                             { timeoutMs = 10000 } = {}) {
   const origin = request.headers.get("Origin");
   const headers = responseHeaders(origin);
   // ESP32 requests do not have Origin. Firebase Rules remain the authorization
@@ -94,7 +94,7 @@ export async function handleRequest(request, upstreamFetch = fetch,
     return errorResponse(403, "Website origin is not allowed.", headers);
   }
   const url = new URL(request.url);
-  if (url.pathname === "/health" && request.method === "GET") {
+  if (["/", "/health"].includes(url.pathname) && request.method === "GET") {
     // Worker health only. This does not check Firebase Auth or RTDB access.
     return new Response(JSON.stringify({ ok: true, service: "smart-ev-relay" }),
                         { headers });
