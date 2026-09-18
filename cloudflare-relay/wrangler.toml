@@ -1,0 +1,4 @@
+name = "smart-ev-firebase-relay"
+main = "worker.mjs"
+compatibility_date = "2026-09-18"
+workers_dev = true
