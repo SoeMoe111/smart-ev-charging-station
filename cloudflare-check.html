@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="my">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Smart EV — Cloudflare Read Check</title>
+  <style>
+    :root{color-scheme:dark;font-family:system-ui,sans-serif;background:#081623;color:#eef5fc}
+    body{margin:0}main{max-width:680px;margin:auto;padding:24px 18px}
+    h1{font-size:1.5rem;line-height:1.5}p{line-height:1.8;color:#b8cadc}
+    .card{background:#102737;border:1px solid #2a455b;border-radius:14px;padding:16px;margin:16px 0}
+    ul{list-style:none;padding:0;margin:0}li{padding:14px 0;line-height:1.6;overflow-wrap:anywhere}
+    li+li{border-top:1px solid #2a455b}.pass{color:#78ebbb}.fail{color:#ff98a5}.skip{color:#c4cddd}
+    button{font:inherit;font-weight:700;padding:14px 20px;border:0;border-radius:10px;background:#78ebbb;color:#092017;cursor:pointer}
+    button:disabled{opacity:.6;cursor:wait}button:focus-visible{outline:3px solid #fff;outline-offset:4px}
+    #summary{font-weight:700;color:#eef5fc;overflow-wrap:anywhere}
+    small{display:block;line-height:1.8;color:#b8cadc;margin-top:18px}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Smart EV — Cloudflare Read Check</h1>
+  <p>လက်ရှိ website နဲ့ ESP32 ချိတ်ဆက်မှုကို မပြောင်းဘဲ Worker အသစ်ကနေ Firebase ဖတ်နိုင်သလား စစ်မယ်။</p>
+  <button id="run" type="button">RUN TEST</button>
+  <section class="card" aria-label="Test results" aria-live="polite">
+    <ul>
+      <li id="worker">Worker: READY</li>
+      <li id="auth">Firebase login: READY</li>
+      <li id="station">Station read: READY</li>
+      <li id="bookings">Booking read: READY</li>
+    </ul>
+    <p id="summary">RUN TEST ကိုနှိပ်ပါ။</p>
+  </section>
+  <small>Booking၊ RFID နဲ့ station ဒေတာ မရေးမဖျက်ပါ။ Token၊ password နဲ့ ဒေတာအကြောင်းအရာကိုလည်း မပြပါ။ Login session မရှိရင် Firebase anonymous user အသစ်တစ်ခု ဖြစ်နိုင်ပါတယ်။</small>
+  <small>PASS ဆိုတာ ဒီ browser/network ကနေ ဖတ်နိုင်တာကိုပဲ ဆိုလိုပါတယ်။ သိမ်းထားတဲ့ station ဒေတာကို ဖတ်တာဖြစ်ပြီး ESP32 လက်ရှိ online ဖြစ်နေတာ၊ charging နဲ့ E-stop ကို မစစ်ထားပါ။</small>
+</main>
+<script>
+  // Give a visible error even if the local module cannot load.
+  const checkButton = document.getElementById("run");
+  checkButton.disabled = true;
+  const checkLoadTimer = setTimeout(() => {
+    document.getElementById("summary").textContent = "PAGE LOAD FAILED — Refresh လုပ်ပါ။";
+  }, 15000);
+  window.cloudflareCheckReady = () => {
+    clearTimeout(checkLoadTimer);
+    checkButton.disabled = false;
+  };
+</script>
+<script type="module" src="./cloudflare-check.mjs?v=20260919-0121"></script>
+</body>
+</html>
