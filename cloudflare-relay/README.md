@@ -8,6 +8,8 @@ Cloudflare runtime၊ မြန်မာနိုင်ငံ network သို�
 
 - Website polling: 2 seconds → 5 seconds။ ESP32 telemetry cadence နဲ့ကိုက်ပြီး
   Free relay request quota အတွက် နေရာပိုကျန်စေသည်။
+  ဤပြောင်းလဲမှုသည် စမ်းသပ် branch တွင်သာရှိသည်။ Live Website က 2 seconds အတိုင်းဖြစ်သည်။
+  Demo latency ကို hardware ပေါ်တွင်စမ်းပြီး user သဘောတူမှ polling ပြောင်းရန်။
 - `worker.mjs`: Website နဲ့ ESP32 `v5` နှစ်ခုလုံးသုံးသော
   `/firebase/<path>.json` + `Authorization: Bearer <Firebase ID token>` protocol ကိုထိန်းထားသည်။
 - Caller ID token ဖြင့် Firebase REST request ပို့သောကြောင့် **မူလ Firebase Rules
@@ -39,8 +41,10 @@ Tests က fake upstream နဲ့ fake JWT-shaped token ကိုသာသုံ
    configuration ဖြစ်သည်။ Existing configured Cloudflare credentials ရှိသော
    laptop တွင် `cloudflare-relay` directory မှ `npx wrangler deploy` သုံးနိုင်သည်။
    Google password/OTP/API token ကို ChatGPT message သို့မဟုတ် public GitHub မတင်ရ။
+   Phone dashboard code editor တွင် `worker.js` အဟောင်းကို Select all လုပ်ပြီး
+   ဤ `worker.mjs` အပြည့်အစုံဖြင့်အစားထိုး၊ Deploy နှိပ်နိုင်သည်။ Import/binding မလိုပါ။
 3. Deploy result မှ **အမှန်တကယ်ရသည့်** Worker URL ကိုယူရန်။ URL မခန့်မှန်းရ။
-4. `/health` ဖွင့်ခြင်းသည် Worker ကိုသာစစ်သည်။ Firebase Auth၊ Rules နဲ့ RTDB access
+4. `/health` သို့မဟုတ် root URL ဖွင့်ခြင်းသည် Worker ကိုသာစစ်သည်။ Firebase Auth၊ Rules နဲ့ RTDB access
    ကောင်းသည်ဟု အတည်မပြုနိုင်သေး။
 5. VPN OFF၊ October 8 တွင်သုံးမည့် network ပေါ်တွင် Anonymous sign-in၊ bookings read၊
    station read၊ admin login၊ ခွင့်မရှိသော write denial တို့ကိုသီးသန့်စမ်းရန်။
