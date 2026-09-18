@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
-import { handleRequest } from "./worker.mjs";
+import worker from "./worker.mjs";
+
+// Keep the deployable module default-export-only. Expose its internal handler
+// only in this in-memory test copy, so upstream requests can be mocked safely.
+const workerSource = await readFile(new URL("./worker.mjs", import.meta.url), "utf8");
+const { handleRequest } = await import("data:text/javascript;base64," +
+  Buffer.from(workerSource + "\nexport { handleRequest };\n").toString("base64"));
 
 // Structurally JWT-shaped, but NOT a real Firebase credential.
 const TOKEN = "eyJ0ZXN0IjoxfQ.eyJzdWIiOiJkZW1vIn0.test-signature";
@@ -21,6 +27,19 @@ test("health is local only and does not claim database health", async () => {
   const response = await handleRequest(new Request(BASE + "/health"), mustNotFetch);
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { ok: true, service: "smart-ev-relay" });
+});
+
+test("deployed default fetch handler serves root and health", async () => {
+  for (const path of ["/", "/health"]) {
+    const response = await worker.fetch(new Request(BASE + path));
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { ok: true, service: "smart-ev-relay" });
+  }
+});
+
+test("deployed default fetch handler rejects database access without a token", async () => {
+  const response = await worker.fetch(new Request(BASE + "/firebase/bookings.json"));
+  assert.equal(response.status, 401);
 });
 
 test("anonymous HTTP requests cannot access database data", async () => {
