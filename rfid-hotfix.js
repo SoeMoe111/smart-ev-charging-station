@@ -46,7 +46,7 @@ function clearStaleRfidUi() {
 }
 
 async function bootRfidHotfix() {
-  const service = await import("./firebase-service.js?v=20260914-relay-v1");
+  const service = await import("./firebase-service.js?v=20261004-auth-proxy-v8");
 
   const startStationWatch = () => {
     try {

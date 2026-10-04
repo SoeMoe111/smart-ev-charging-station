@@ -1,23 +1,23 @@
-import {
-  firebaseConfig,
-  firebaseConfigured
-} from "./firebase-config.js";
+import { firebaseConfigured } from "./firebase-config.js";
 
-const FIREBASE_VERSION = "12.18.0";
-const FIREBASE_CDN =
-  `https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}`;
+const FIREBASE_RELAY_ORIGIN =
+  "https://smart-ev-firebase-relay.ldqr-501416499.chatgpt.site";
+const FIREBASE_RELAY_URL = `${FIREBASE_RELAY_ORIGIN}/firebase`;
+const FIREBASE_AUTH_URL = `${FIREBASE_RELAY_ORIGIN}/auth`;
 
-const FIREBASE_RELAY_URL =
-  "https://smart-ev-firebase-relay.smoe49262.workers.dev/firebase";
-
-const RELAY_POLL_INTERVAL_MS = 2000;
+// Match the ESP32's 5-second telemetry cadence and leave free-relay quota headroom.
+const RELAY_POLL_INTERVAL_MS = 5000;
 
 const STATION_ID = "demo-station";
 export const ADMIN_UID = "fM6p0sQzQbaqKAmuQFGA6mNolJU2";
 
-let authSdk;
-let auth;
-let currentUser;
+const AUTH_STORAGE_KEY = "smartEvFirebaseRelaySessionV1";
+const AUTH_REFRESH_MARGIN_MS = 2 * 60 * 1000;
+const REQUEST_TIMEOUT_MS = 15000;
+
+let currentSession = null;
+let refreshPromise = null;
+const authListeners = new Set();
 
 export function normalizeUid(value) {
   return String(value ?? "")
@@ -42,39 +42,150 @@ function snapshotList(value) {
 }
 
 function requireConnection() {
-  if (!auth || !currentUser) {
+  if (!currentSession?.idToken) {
     throw new Error("Firebase is not connected.");
   }
 }
 
 function requireAuth() {
-  if (!auth || !authSdk) {
+  if (!currentSession?.idToken) {
     throw new Error("Firebase Authentication is not connected.");
   }
 }
 
-function authState(user = currentUser) {
+function authState(session = currentSession) {
   return {
-    uid: user?.uid || "",
-    email: user?.email || "",
-    isAnonymous: Boolean(user?.isAnonymous),
-    isAdmin: user?.uid === ADMIN_UID
+    uid: session?.uid || "",
+    email: session?.email || "",
+    isAnonymous: Boolean(session?.isAnonymous),
+    isAdmin: session?.uid === ADMIN_UID
   };
 }
 
-function waitForInitialAuthState() {
-  return new Promise((resolve, reject) => {
-    let unsubscribe = () => {};
+function notifyAuthState() {
+  const state = authState();
+  for (const callback of authListeners) {
+    queueMicrotask(() => callback(state));
+  }
+}
 
-    unsubscribe = authSdk.onAuthStateChanged(
-      auth,
-      user => {
-        unsubscribe();
-        resolve(user);
-      },
-      reject
-    );
-  });
+function saveSession(session) {
+  if (!session) {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    return;
+  }
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+}
+
+function loadSession() {
+  try {
+    const value = JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY) || "null");
+    if (!value || typeof value.idToken !== "string" ||
+        typeof value.refreshToken !== "string" ||
+        typeof value.uid !== "string" || !Number.isFinite(value.expiresAt)) {
+      return null;
+    }
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+function commitSession(session) {
+  currentSession = session;
+  saveSession(session);
+  notifyAuthState();
+  return session;
+}
+
+async function fetchJson(url, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      cache: "no-store",
+      signal: controller.signal
+    });
+    const text = await response.text();
+    let value = null;
+    if (text) {
+      try {
+        value = JSON.parse(text);
+      } catch {
+        throw new Error("Relay returned invalid data.");
+      }
+    }
+    if (!response.ok) {
+      const detail = value?.error || value?.message || `HTTP ${response.status}`;
+      throw new Error(`Firebase relay request failed: ${detail}`);
+    }
+    return value;
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error("Firebase relay request timed out.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function authRequest(action, body) {
+  const options = {
+    method: "POST",
+    headers: { "Content-Type": "application/json" }
+  };
+  if (body !== undefined) options.body = JSON.stringify(body);
+  const value = await fetchJson(`${FIREBASE_AUTH_URL}/${action}`, options);
+  if (!value?.idToken || !value?.refreshToken || !value?.localId) {
+    throw new Error("Firebase relay returned an incomplete login.");
+  }
+  return value;
+}
+
+function sessionFromAuth(value, previous = {}) {
+  const expiresIn = Math.max(300, Number(value.expiresIn) || 3600);
+  return {
+    idToken: value.idToken,
+    refreshToken: value.refreshToken,
+    uid: value.localId,
+    email: value.email || previous.email || "",
+    isAnonymous: Boolean(previous.isAnonymous),
+    expiresAt: Date.now() + expiresIn * 1000
+  };
+}
+
+async function createAnonymousSession() {
+  const value = await authRequest("anonymous");
+  return sessionFromAuth(value, { isAnonymous: true });
+}
+
+async function refreshSession(force = false) {
+  requireAuth();
+  if (!force && Date.now() < currentSession.expiresAt - AUTH_REFRESH_MARGIN_MS) {
+    return currentSession;
+  }
+  if (!refreshPromise) {
+    const previous = currentSession;
+    refreshPromise = authRequest("refresh", {
+      refreshToken: previous.refreshToken
+    }).then(value => commitSession(sessionFromAuth(value, previous)))
+      .finally(() => { refreshPromise = null; });
+  }
+  return refreshPromise;
+}
+
+async function getIdToken() {
+  requireConnection();
+  if (Date.now() >= currentSession.expiresAt - AUTH_REFRESH_MARGIN_MS) {
+    try {
+      await refreshSession(true);
+    } catch (error) {
+      if (Date.now() >= currentSession.expiresAt) throw error;
+    }
+  }
+  return currentSession.idToken;
 }
 
 function relayUrl(path) {
@@ -88,7 +199,7 @@ function relayUrl(path) {
 async function relayRequest(path, options = {}) {
   requireConnection();
 
-  const token = await currentUser.getIdToken();
+  const token = await getIdToken();
   const method = options.method || "GET";
   const headers = {
     Authorization: `Bearer ${token}`
@@ -105,30 +216,40 @@ async function relayRequest(path, options = {}) {
     request.body = JSON.stringify(options.body);
   }
 
-  const response = await fetch(relayUrl(path), request);
-  const responseText = await response.text();
-  let result = null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  request.signal = controller.signal;
+  try {
+    const response = await fetch(relayUrl(path), request);
+    const responseText = await response.text();
+    let result = null;
 
-  if (responseText) {
-    try {
-      result = JSON.parse(responseText);
-    } catch {
-      result = responseText;
+    if (responseText) {
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        result = responseText;
+      }
     }
+
+    if (!response.ok) {
+      const detail = typeof result === "object"
+        ? result?.error || result?.message
+        : result;
+      throw new Error(
+        `Firebase relay request failed (HTTP ${response.status})` +
+        (detail ? `: ${detail}` : "")
+      );
+    }
+    return result;
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error("Firebase relay request timed out.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
   }
-
-  if (!response.ok) {
-    const detail = typeof result === "object"
-      ? result?.error || result?.message
-      : result;
-
-    throw new Error(
-      `Firebase relay request failed (HTTP ${response.status})` +
-      (detail ? `: ${detail}` : "")
-    );
-  }
-
-  return result;
 }
 
 function subscribeRelay(path, transform, callback, errorCallback) {
@@ -172,28 +293,20 @@ export async function connectFirebase() {
     };
   }
 
-  const [appSdk, loadedAuthSdk] =
-    await Promise.all([
-      import(`${FIREBASE_CDN}/firebase-app.js`),
-      import(`${FIREBASE_CDN}/firebase-auth.js`)
-    ]);
-
-  authSdk = loadedAuthSdk;
-
-  const app = appSdk.initializeApp(firebaseConfig);
-
-  auth = authSdk.getAuth(app);
-
-  await authSdk.setPersistence(
-    auth,
-    authSdk.browserLocalPersistence
-  );
-
-  currentUser = await waitForInitialAuthState();
-
-  if (!currentUser) {
-    const credential = await authSdk.signInAnonymously(auth);
-    currentUser = credential.user;
+  currentSession = loadSession();
+  if (currentSession) {
+    try {
+      await refreshSession(true);
+    } catch (error) {
+      if (Date.now() >= currentSession.expiresAt) {
+        commitSession(null);
+      } else {
+        console.warn("Using an unexpired cached Firebase session.", error);
+      }
+    }
+  }
+  if (!currentSession) {
+    commitSession(await createAnonymousSession());
   }
 
   return {
@@ -204,15 +317,16 @@ export async function connectFirebase() {
 
 export function subscribeAuthState(callback, errorCallback) {
   requireAuth();
-
-  return authSdk.onAuthStateChanged(
-    auth,
-    user => {
-      currentUser = user;
-      callback(authState(user));
-    },
-    errorCallback
-  );
+  const guarded = state => {
+    try {
+      callback(state);
+    } catch (error) {
+      errorCallback?.(error);
+    }
+  };
+  authListeners.add(guarded);
+  queueMicrotask(() => guarded(authState()));
+  return () => authListeners.delete(guarded);
 }
 
 export async function signInAdmin(email, password) {
@@ -225,32 +339,26 @@ export async function signInAdmin(email, password) {
     throw new Error("Admin email and password are required.");
   }
 
-  const credential = await authSdk.signInWithEmailAndPassword(
-    auth,
-    normalizedEmail,
-    normalizedPassword
-  );
-
-  if (credential.user.uid !== ADMIN_UID) {
-    await authSdk.signOut(auth);
-    const anonymousCredential =
-      await authSdk.signInAnonymously(auth);
-    currentUser = anonymousCredential.user;
+  const value = await authRequest("signin", {
+    email: normalizedEmail,
+    password: normalizedPassword
+  });
+  if (value.localId !== ADMIN_UID) {
+    commitSession(await createAnonymousSession());
     throw new Error("This account is not authorized as the project admin.");
   }
-
-  currentUser = credential.user;
+  commitSession(sessionFromAuth(value, {
+    email: normalizedEmail,
+    isAnonymous: false
+  }));
   return authState();
 }
 
 export async function signOutAdmin() {
   requireAuth();
 
-  await authSdk.signOut(auth);
-
-  const credential = await authSdk.signInAnonymously(auth);
-  currentUser = credential.user;
-
+  commitSession(null);
+  commitSession(await createAnonymousSession());
   return authState();
 }
 
@@ -274,7 +382,7 @@ export async function createBooking(booking) {
       ...booking,
       uid: normalizeUid(booking.uid),
       createdAt: { ".sv": "timestamp" },
-      createdBy: currentUser.uid,
+      createdBy: currentSession.uid,
       status: "confirmed"
     }
   });
@@ -324,7 +432,7 @@ export async function saveRfidUser(user) {
       uid: normalizedUid,
       active: true,
       updatedAt: { ".sv": "timestamp" },
-      updatedBy: currentUser.uid
+      updatedBy: currentSession.uid
     }
   });
 }
@@ -363,7 +471,7 @@ export async function recordAccessEvent({
       plate,
       source,
       timestamp: { ".sv": "timestamp" },
-      createdBy: currentUser.uid
+      createdBy: currentSession.uid
     }
   });
 }

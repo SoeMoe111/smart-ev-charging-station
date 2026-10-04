@@ -13,7 +13,7 @@ import {
   deleteAllRfidUsers,
   subscribeStation,
   normalizeUid
-} from "./firebase-service.js?v=20260914-relay-v1";
+} from "./firebase-service.js?v=20261004-auth-proxy-v8";
 
 // ============================================
 // SMART EV CHARGING STATION - FIREBASE APP

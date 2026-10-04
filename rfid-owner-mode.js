@@ -192,7 +192,7 @@ function watchDetectedCard() {
 }
 
 async function installOwnerOnlyBehavior() {
-  const service = await import("./firebase-service.js?v=20260914-relay-v1");
+  const service = await import("./firebase-service.js?v=20261004-auth-proxy-v8");
 
   document.addEventListener("submit", async event => {
     const form = event.target;
