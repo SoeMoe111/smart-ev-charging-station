@@ -13,7 +13,7 @@ import {
   deleteAllRfidUsers,
   subscribeStation,
   normalizeUid
-} from "./firebase-service.js?v=20261005-shared-poll-v9";
+} from "./firebase-service.js?v=20261006-rfid-booking-v11";
 
 // ============================================
 // SMART EV CHARGING STATION - FIREBASE APP
