@@ -1,4 +1,4 @@
-import { firebaseConfigured } from "./firebase-config.js?v=20261005-shared-poll-v9";
+import { firebaseConfigured } from "./firebase-config.js?v=20261006-rfid-booking-v11";
 
 const FIREBASE_RELAY_ORIGIN =
   "https://smart-ev-firebase-relay.ldqr-501416499.chatgpt.site";
