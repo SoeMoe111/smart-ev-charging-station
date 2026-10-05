@@ -4,10 +4,10 @@
     ".write": false,
     "bookings": {
       ".read": "auth != null",
-      ".indexOn": ["slot", "date", "status", "driver"],
+      ".indexOn": ["slot", "date", "status", "driver", "uid"],
       "$bookingId": {
         ".write": "auth != null && (auth.uid === 'fM6p0sQzQbaqKAmuQFGA6mNolJU2' || (!data.exists() && newData.exists() && newData.child('createdBy').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('createdBy').val() === auth.uid))",
-        ".validate": "newData.hasChildren(['driver', 'plate', 'date', 'slot', 'time', 'duration', 'createdAt', 'createdBy', 'status'])",
+        ".validate": "newData.hasChildren(['driver', 'plate', 'uid', 'date', 'slot', 'time', 'duration', 'createdAt', 'createdBy', 'status'])",
         "driver": {
           ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
         },
@@ -15,7 +15,7 @@
           ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30"
         },
         "uid": {
-          ".validate": "newData.isString() && newData.val().length <= 30"
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30"
         },
         "date": {
           ".validate": "newData.isString() && newData.val().length === 10"
