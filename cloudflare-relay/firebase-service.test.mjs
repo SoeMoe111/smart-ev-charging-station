@@ -39,7 +39,7 @@ test("website can sign in anonymously and read through one Worker path", async (
   };
 
   const runnable = source.replace(
-    'import { firebaseConfigured } from "./firebase-config.js?v=20261005-shared-poll-v9";',
+    'import { firebaseConfigured } from "./firebase-config.js?v=20261006-rfid-booking-v11";',
     "const firebaseConfigured = true;"
   );
   const service = await import("data:text/javascript;base64," +
@@ -90,7 +90,7 @@ test("duplicate station subscribers share one relay polling request", async () =
   };
 
   const runnable = source.replace(
-    'import { firebaseConfigured } from "./firebase-config.js?v=20261005-shared-poll-v9";',
+    'import { firebaseConfigured } from "./firebase-config.js?v=20261006-rfid-booking-v11";',
     "const firebaseConfigured = true;"
   );
   const service = await import("data:text/javascript;base64," +
