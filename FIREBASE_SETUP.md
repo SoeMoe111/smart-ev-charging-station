@@ -20,8 +20,9 @@ ESP32 firmware. The website accepts it only in the Firebase sign-in dialog.
 ## Access model
 
 - Public visitors automatically receive an anonymous Firebase account.
-- Anonymous visitors can view the demo schedule, create a booking and cancel
-  only the booking created by their current browser account.
+- Anonymous visitors can view the demo schedule, create a booking tied to a
+  registered RFID UID and cancel only the booking created by their current
+  browser account.
 - Only the exact owner UID above can clear all bookings, manage RFID users,
   view access events or write station data.
 - The RFID administration page is hidden until the owner signs in.
@@ -31,6 +32,11 @@ ESP32 firmware. The website accepts it only in the Firebase sign-in dialog.
   bookings and registered card owners, write only Slot 1 telemetry/RFID scan
   state, and create its own access-event records. It cannot edit bookings,
   RFID owners, Slot 2 telemetry, or other stations.
+
+Each new booking stores both the verified display name and normalized card UID.
+The website auto-fills the owner name from the selected card, and Slot 1 grants
+access only when the scanned UID has a confirmed booking in the active time
+window.
 
 ## Deploying rule changes
 
