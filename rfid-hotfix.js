@@ -46,7 +46,7 @@ function clearStaleRfidUi() {
 }
 
 async function bootRfidHotfix() {
-  const service = await import("./firebase-service.js?v=20261005-shared-poll-v9");
+  const service = await import("./firebase-service.js?v=20261006-rfid-booking-v11");
 
   const startStationWatch = () => {
     try {
