@@ -26,6 +26,14 @@ test("booking payload stores the selected card UID and verified owner", async ()
   assert.match(app, /42 8D 50 07/);
 });
 
+test("legacy RFID owner helper preserves all four project cards", async () => {
+  const helper = await readProjectFile("rfid-owner-mode.js");
+
+  assert.match(helper, /"42 8D 50 07": "Dr\. Than Than Swe"/);
+  assert.match(helper, /RESTORE 4 PROJECT CARDS/);
+  assert.doesNotMatch(helper, /Driver Name must match/);
+});
+
 test("database rules require and index RFID UID bookings", async () => {
   const rules = JSON.parse(await readProjectFile("database.rules.json"));
   const bookingRules = rules.rules.bookings;
