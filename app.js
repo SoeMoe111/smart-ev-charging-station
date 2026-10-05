@@ -134,6 +134,40 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+const DEFAULT_RFID_USERS = [
+  {
+    id: "7A-BB-E4-06",
+    name: "Soe Moe",
+    plate: "N/A",
+    uid: "7A BB E4 06",
+    active: true
+  },
+  {
+    id: "8D-C9-0D-07",
+    name: "Kyaw Zayar Min",
+    plate: "N/A",
+    uid: "8D C9 0D 07",
+    active: true
+  },
+  {
+    id: "BD-B0-50-07",
+    name: "Myint Zu Khin",
+    plate: "N/A",
+    uid: "BD B0 50 07",
+    active: true
+  },
+  {
+    id: "42-8D-50-07",
+    name: "Dr. Than Than Swe",
+    plate: "N/A",
+    uid: "42 8D 50 07",
+    active: true
+  }
+];
+
+let rfidUsers = loadData("rfUsers");
+let detectedBookingCard = null;
+
 
 // ============================================
 // ADMIN AUTHENTICATION
@@ -340,11 +374,116 @@ const bookingForm =
 const bookingMsg =
   document.getElementById("bookingMsg");
 
+const bookingCard =
+  document.getElementById("bookingCard");
+
+const bookingDriver =
+  document.getElementById("driver");
+
+const bookingCardHint =
+  document.getElementById("bookingCardHint");
+
 const slot1Bookings =
   document.getElementById("slot1Bookings");
 
 const slot2Bookings =
   document.getElementById("slot2Bookings");
+
+function maskUid(uid) {
+  const parts = normalizeUid(uid).split(" ").filter(Boolean);
+
+  if (parts.length <= 2) {
+    return parts.join(" ");
+  }
+
+  return [
+    ...parts.slice(0, -2).map(() => "••"),
+    ...parts.slice(-2)
+  ].join(" ");
+}
+
+function bookingCardDirectory() {
+  const source = rfidUsers.length
+    ? rfidUsers
+    : DEFAULT_RFID_USERS;
+
+  const byUid = new Map();
+
+  source.forEach(user => {
+    const uid = normalizeUid(user.uid);
+    const name = String(user.name || "").trim();
+
+    if (uid && name && user.active !== false) {
+      byUid.set(uid, {
+        ...user,
+        uid,
+        name
+      });
+    }
+  });
+
+  if (detectedBookingCard) {
+    const uid = normalizeUid(detectedBookingCard.uid);
+
+    if (uid && detectedBookingCard.name) {
+      byUid.set(uid, {
+        ...detectedBookingCard,
+        uid
+      });
+    }
+  }
+
+  return [...byUid.values()].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+}
+
+function applyBookingCardSelection() {
+  if (!bookingCard || !bookingDriver) return;
+
+  const selectedUid = normalizeUid(bookingCard.value);
+  const selectedCard = bookingCardDirectory().find(
+    card => card.uid === selectedUid
+  );
+
+  bookingDriver.value = selectedCard?.name || "";
+  bookingDriver.readOnly = true;
+
+  if (bookingCardHint) {
+    bookingCardHint.textContent = selectedCard
+      ? `Owner verified · UID ${maskUid(selectedCard.uid)}`
+      : "Choose a registered card, or tap it on the station reader.";
+  }
+}
+
+function renderBookingCardOptions(preferredUid = "") {
+  if (!bookingCard) return;
+
+  const wantedUid = normalizeUid(
+    preferredUid || bookingCard.value
+  );
+  const cards = bookingCardDirectory();
+
+  bookingCard.innerHTML = [
+    '<option value="">Select registered RFID card</option>',
+    ...cards.map(card => `
+      <option value="${escapeHtml(card.uid)}">
+        ${escapeHtml(card.name)} · ${escapeHtml(maskUid(card.uid))}
+      </option>
+    `)
+  ].join("");
+
+  if (cards.some(card => card.uid === wantedUid)) {
+    bookingCard.value = wantedUid;
+  }
+
+  applyBookingCardSelection();
+}
+
+bookingCard?.addEventListener(
+  "change",
+  applyBookingCardSelection
+);
 
 function canManageBooking(booking) {
   return !firebaseMode ||
@@ -397,6 +536,9 @@ function renderSlotBookings(slotName, target) {
           ${escapeHtml(booking.plate)}
           ·
           ${escapeHtml(booking.duration)} min
+          ${booking.uid
+            ? ` · RFID ${escapeHtml(maskUid(booking.uid))}`
+            : ""}
         </span>
       </div>
 
@@ -459,15 +601,29 @@ if (bookingForm) {
 
       event.preventDefault();
 
+      const selectedUid = normalizeUid(
+        bookingCard?.value || ""
+      );
+      const selectedCard = bookingCardDirectory().find(
+        card => card.uid === selectedUid
+      );
+
+      if (!selectedCard) {
+        bookingMsg.className = "form-message error";
+        bookingMsg.textContent =
+          "Select a registered RFID card before confirming the booking.";
+        return;
+      }
+
       const data = {
         driver:
-          document.getElementById("driver").value.trim(),
+          selectedCard.name,
 
         plate:
           document.getElementById("plate").value.trim(),
 
-        // Public users do not type RFID UIDs. Identity is resolved at the station.
-        uid: "",
+        // The station matches the physical card UID to this booking.
+        uid: selectedUid,
 
         date:
           document.getElementById("date").value,
@@ -549,10 +705,11 @@ if (bookingForm) {
 
         bookingMsg.className = "form-message ok";
         bookingMsg.textContent = firebaseMode
-          ? "Booking confirmed and synchronized to Firebase."
-          : "Booking confirmed in local fallback mode.";
+          ? `Booking confirmed for ${selectedCard.name}. Tap the same RFID card at the station.`
+          : `Booking confirmed locally for ${selectedCard.name}.`;
 
         bookingForm.reset();
+        renderBookingCardOptions();
       } catch (error) {
         console.error(error);
         bookingMsg.className = "form-message error";
@@ -606,15 +763,13 @@ if (clearBookings) {
   );
 }
 
+renderBookingCardOptions();
 renderBookings();
 
 
 // ============================================
 // RFID SYSTEM
 // ============================================
-
-let rfidUsers =
-  loadData("rfUsers");
 
 const rfidForm =
   document.getElementById("rfidForm");
@@ -630,31 +785,12 @@ function renderUsers() {
 
   if (!rfidUsersList) return;
 
-if (!rfidUsers.length) {
-  rfidUsers = [
-    {
-      id: "7A-BB-E4-06",
-      name: "Soe Moe",
-      plate: "N/A",
-      uid: "7A BB E4 06"
-    },
-    {
-      id: "8D-C9-0D-07",
-      name: "Kyaw Zayar Min",
-      plate: "N/A",
-      uid: "8D C9 0D 07"
-    },
-    {
-      id: "BD-B0-50-07",
-      name: "Myint Zu Khin",
-      plate: "N/A",
-      uid: "BD B0 50 07"
-    }
-  ];
-}
+  const visibleUsers = rfidUsers.length
+    ? rfidUsers
+    : DEFAULT_RFID_USERS;
 
   rfidUsersList.innerHTML =
-    rfidUsers.map(
+    visibleUsers.map(
       (user, index) => `
 
       <div class="user-row">
@@ -683,6 +819,8 @@ if (!rfidUsers.length) {
 
     `
     ).join("");
+
+  renderBookingCardOptions();
 }
 
 
@@ -876,6 +1014,21 @@ function applyRfidStationState(rfid = {}) {
   if (uid) {
     latestDetectedUid = uid;
     latestDetectedTimestamp = timestamp;
+  }
+
+  if (
+    uid &&
+    latest.userName &&
+    scanIsRecent(timestamp)
+  ) {
+    detectedBookingCard = {
+      uid,
+      name: String(latest.userName).trim(),
+      plate: String(latest.plate || "").trim(),
+      active: true
+    };
+
+    renderBookingCardOptions(uid);
   }
 
   updateRfidEnrollmentUi();
