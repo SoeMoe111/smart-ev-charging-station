@@ -4,7 +4,8 @@
 const PROJECT_CARD_OWNERS = Object.freeze({
   "7A BB E4 06": "Soe Moe",
   "BD B0 50 07": "Myint Zu Khin",
-  "8D C9 0D 07": "Kyaw Zayar Min"
+  "8D C9 0D 07": "Kyaw Zayar Min",
+  "42 8D 50 07": "Dr. Than Than Swe"
 });
 
 const TELEMETRY_STALE_MS = 15000;
@@ -129,7 +130,7 @@ function applyOwnerOnlyUi() {
   const bookingNote = document.querySelector("#booking .booking-info .note-box");
   if (bookingNote) {
     bookingNote.textContent =
-      "Driver Name must match the registered RFID card owner. Vehicle Plate belongs to the booking only and is not stored on the card.";
+      "The RFID UID is the unique booking identity. The owner name is verified and filled automatically.";
   }
 
   const style = document.createElement("style");
@@ -146,7 +147,7 @@ function applyOwnerOnlyUi() {
     button.id = "registerProjectCardsBtn";
     button.type = "button";
     button.className = "secondary-btn wide";
-    button.textContent = "RESTORE 3 PROJECT CARDS";
+    button.textContent = "RESTORE 4 PROJECT CARDS";
     enrollButton.insertAdjacentElement("afterend", button);
   }
 }
@@ -192,7 +193,7 @@ function watchDetectedCard() {
 }
 
 async function installOwnerOnlyBehavior() {
-  const service = await import("./firebase-service.js?v=20261005-shared-poll-v9");
+  const service = await import("./firebase-service.js?v=20261006-rfid-booking-v11");
 
   document.addEventListener("submit", async event => {
     const form = event.target;
@@ -247,15 +248,15 @@ async function installOwnerOnlyBehavior() {
       }
 
       setScanMessage(
-        "3 PROJECT CARD OWNERS RESTORED<br>Soe Moe · Myint Zu Khin · Kyaw Zayar Min",
+        "4 PROJECT CARD OWNERS RESTORED<br>Soe Moe · Myint Zu Khin · Kyaw Zayar Min · Dr. Than Than Swe",
         "granted"
       );
-      button.textContent = "3 PROJECT CARDS RESTORED";
+      button.textContent = "4 PROJECT CARDS RESTORED";
     } catch (error) {
       console.error("Project card restore failed", error);
       setScanMessage("CARD RESTORE FAILED · ADMIN LOGIN REQUIRED", "denied");
       button.disabled = false;
-      button.textContent = "RESTORE 3 PROJECT CARDS";
+      button.textContent = "RESTORE 4 PROJECT CARDS";
     }
   });
 
