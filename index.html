@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#081728">
   <title>IOT Smart EV Charging Station</title>
   <meta name="description" content="IoT based Smart EV Charging Station - Fifth Year Electrical Engineering Project">
-  <link rel="stylesheet" href="style.css?v=20260913-live-fix">
+  <link rel="stylesheet" href="style.css?v=20261006-rfid-booking-v10">
 </head>
 <body>
 
@@ -293,7 +293,7 @@
     <p class="eyebrow">RESERVATION SYSTEM</p>
     <h1>Book a charging time</h1>
     <p>
-      Reserve a charging slot online. RFID identity is verified automatically when the driver arrives at the station.
+      Reserve with a registered RFID card. The same physical card verifies the booking when the driver arrives.
     </p>
   </div>
 
@@ -313,8 +313,18 @@
         <div class="form-grid">
 
           <label>
-            Driver Name
-            <input id="driver" placeholder="Enter driver name" required>
+            Registered RFID Card
+            <select id="bookingCard" required>
+              <option value="">Select registered RFID card</option>
+            </select>
+            <small id="bookingCardHint" class="field-hint">
+              Choose a registered card, or tap it on the station reader.
+            </small>
+          </label>
+
+          <label>
+            Card Owner
+            <input id="driver" placeholder="Auto-filled from the selected card" readonly required>
           </label>
 
           <label>
@@ -366,13 +376,13 @@
         <h3>Conflict-aware reservation</h3>
 
         <ol>
-          <li>Enter driver and vehicle details, then select a slot and time.</li>
+          <li>Select the registered RFID card; the verified owner name fills automatically.</li>
           <li>The website checks the shared Firebase calendar and rejects overlaps.</li>
-          <li>At the station, the driver taps the enrolled RFID card for automatic verification.</li>
+          <li>At the station, tap the same card. Its UID must match the confirmed booking.</li>
         </ol>
 
         <div class="note-box">
-          Drivers do not need to know or type their RFID UID when booking.
+          The UID is used as the unique booking identity, but it is selected or scanned instead of typed manually.
         </div>
 
       </aside>
@@ -945,7 +955,7 @@
 
 </footer>
 
-<script type="module" src="app.js?v=20261005-shared-poll-v9"></script>
+<script type="module" src="app.js?v=20261006-rfid-booking-v10"></script>
 
 </body>
 </html>
