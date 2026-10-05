@@ -192,7 +192,7 @@ function watchDetectedCard() {
 }
 
 async function installOwnerOnlyBehavior() {
-  const service = await import("./firebase-service.js?v=20261004-auth-proxy-v8");
+  const service = await import("./firebase-service.js?v=20261005-shared-poll-v9");
 
   document.addEventListener("submit", async event => {
     const form = event.target;

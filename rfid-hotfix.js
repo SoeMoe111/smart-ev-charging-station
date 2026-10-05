@@ -46,7 +46,7 @@ function clearStaleRfidUi() {
 }
 
 async function bootRfidHotfix() {
-  const service = await import("./firebase-service.js?v=20261004-auth-proxy-v8");
+  const service = await import("./firebase-service.js?v=20261005-shared-poll-v9");
 
   const startStationWatch = () => {
     try {
@@ -57,7 +57,6 @@ async function bootRfidHotfix() {
         },
         error => {
           console.error("RFID hotfix station watch failed", error);
-          setTimeout(startStationWatch, 1500);
         }
       );
     } catch (error) {

@@ -1,4 +1,4 @@
-import { firebaseConfigured } from "./firebase-config.js";
+import { firebaseConfigured } from "./firebase-config.js?v=20261005-shared-poll-v9";
 
 const FIREBASE_RELAY_ORIGIN =
   "https://smart-ev-firebase-relay.ldqr-501416499.chatgpt.site";
@@ -7,6 +7,7 @@ const FIREBASE_AUTH_URL = `${FIREBASE_RELAY_ORIGIN}/auth`;
 
 // Match the ESP32's 5-second telemetry cadence and leave free-relay quota headroom.
 const RELAY_POLL_INTERVAL_MS = 5000;
+const RELAY_POLL_MAX_BACKOFF_MS = 60000;
 
 const STATION_ID = "demo-station";
 export const ADMIN_UID = "fM6p0sQzQbaqKAmuQFGA6mNolJU2";
@@ -18,6 +19,7 @@ const REQUEST_TIMEOUT_MS = 15000;
 let currentSession = null;
 let refreshPromise = null;
 const authListeners = new Set();
+const relayPollers = new Map();
 
 export function normalizeUid(value) {
   return String(value ?? "")
@@ -252,35 +254,118 @@ async function relayRequest(path, options = {}) {
   }
 }
 
-function subscribeRelay(path, transform, callback, errorCallback) {
-  let active = true;
-  let timer = null;
+function pollDelay(failureCount) {
+  if (failureCount <= 0) return RELAY_POLL_INTERVAL_MS;
+
+  return Math.min(
+    RELAY_POLL_INTERVAL_MS * (2 ** Math.min(failureCount, 4)),
+    RELAY_POLL_MAX_BACKOFF_MS
+  );
+}
+
+function notifyRelaySubscriber(subscriber, value) {
+  try {
+    subscriber.callback(subscriber.transform(value));
+  } catch (error) {
+    subscriber.errorCallback?.(error);
+  }
+}
+
+function notifyRelayError(subscriber, error) {
+  try {
+    subscriber.errorCallback?.(error);
+  } catch (callbackError) {
+    console.error("Relay subscription error handler failed", callbackError);
+  }
+}
+
+function createRelayPoller(path) {
+  const poller = {
+    path,
+    subscribers: new Set(),
+    timer: null,
+    running: false,
+    failureCount: 0,
+    hasValue: false,
+    value: null
+  };
+
+  const schedule = delay => {
+    if (!poller.subscribers.size) {
+      relayPollers.delete(path);
+      return;
+    }
+
+    poller.timer = setTimeout(poll, delay);
+  };
 
   const poll = async () => {
+    if (poller.running || !poller.subscribers.size) return;
+
+    poller.running = true;
+    poller.timer = null;
+
     try {
       const value = await relayRequest(path);
+      poller.value = value;
+      poller.hasValue = true;
+      poller.failureCount = 0;
 
-      if (active) {
-        callback(transform(value));
+      for (const subscriber of [...poller.subscribers]) {
+        notifyRelaySubscriber(subscriber, value);
       }
     } catch (error) {
-      if (active) {
-        errorCallback?.(error);
+      poller.failureCount += 1;
+
+      for (const subscriber of [...poller.subscribers]) {
+        notifyRelayError(subscriber, error);
       }
     } finally {
-      if (active) {
-        timer = setTimeout(poll, RELAY_POLL_INTERVAL_MS);
-      }
+      poller.running = false;
+      schedule(pollDelay(poller.failureCount));
     }
   };
 
-  poll();
+  poller.start = () => { void poll(); };
+  return poller;
+}
+
+function subscribeRelay(path, transform, callback, errorCallback) {
+  const subscriber = {
+    transform,
+    callback,
+    errorCallback,
+    active: true
+  };
+
+  let poller = relayPollers.get(path);
+  if (!poller) {
+    poller = createRelayPoller(path);
+    relayPollers.set(path, poller);
+  }
+
+  poller.subscribers.add(subscriber);
+
+  if (poller.hasValue) {
+    queueMicrotask(() => {
+      if (subscriber.active) {
+        notifyRelaySubscriber(subscriber, poller.value);
+      }
+    });
+  } else if (!poller.running && !poller.timer) {
+    poller.start();
+  }
 
   return () => {
-    active = false;
+    if (!subscriber.active) return;
 
-    if (timer) {
-      clearTimeout(timer);
+    subscriber.active = false;
+    poller.subscribers.delete(subscriber);
+
+    if (!poller.subscribers.size) {
+      if (poller.timer) clearTimeout(poller.timer);
+      poller.timer = null;
+      relayPollers.delete(path);
     }
   };
 }
