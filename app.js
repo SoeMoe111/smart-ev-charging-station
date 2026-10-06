@@ -370,7 +370,7 @@ let bookings = loadData("evBookings");
 
 const NO_SHOW_GRACE_MINUTES = 15;
 const BOOKING_CLAIMS_STORAGE_KEY = "evBookingClaimsV1";
-const ENERGY_METER_STORAGE_KEY = "evDigitalTwinMeterV2";
+const ENERGY_METER_STORAGE_KEY = "evDigitalTwinMeterV3";
 const BILLING_RATE_STORAGE_KEY = "evBillingRateV1";
 const DIGITAL_TWIN_VOLTAGE_SCALE = 50;
 const DIGITAL_TWIN_CURRENT_SCALE = 5;
@@ -383,15 +383,34 @@ let claimedBookingIds = new Set(
 
 let noShowCleanupRunning = false;
 
-let sessionMeter = loadData(ENERGY_METER_STORAGE_KEY, {
-  active: false,
-  energyWh: 0,
-  lastSampleAt: 0,
-  lastPowerW: 0,
-  latestVoltage: 0,
-  latestCurrent: 0,
-  latestModelPowerW: 0
-});
+function emptySessionMeter() {
+  return {
+    active: false,
+    completed: false,
+    energyWh: 0,
+    lastSampleAt: 0,
+    lastPowerW: 0,
+    latestVoltage: 0,
+    latestCurrent: 0,
+    latestModelPowerW: 0,
+    startedAt: 0,
+    endedAt: 0,
+    receiptId: "",
+    owner: "",
+    uid: "",
+    plate: "",
+    slot: "Slot 1",
+    rate: 0,
+    vehicleType: ""
+  };
+}
+
+let sessionMeter = {
+  ...emptySessionMeter(),
+  ...loadData(ENERGY_METER_STORAGE_KEY, {})
+};
+
+let receiptPresentedFor = "";
 
 const bookingForm =
   document.getElementById("bookingForm");
@@ -413,6 +432,24 @@ const bookingSubmitBtn =
 
 const billingRate =
   document.getElementById("billingRate");
+
+const chargingReceiptDialog =
+  document.getElementById("chargingReceiptDialog");
+
+const meterSessionActions =
+  document.getElementById("meterSessionActions");
+
+const viewReceiptBtn =
+  document.getElementById("viewReceiptBtn");
+
+const resetSessionBtn =
+  document.getElementById("resetSessionBtn");
+
+const printReceiptBtn =
+  document.getElementById("printReceiptBtn");
+
+const closeReceiptBtn =
+  document.getElementById("closeReceiptBtn");
 
 const slot1Bookings =
   document.getElementById("slot1Bookings");
@@ -1439,7 +1476,88 @@ function applySlotTelemetry(slotNumber, slot = {}) {
   return true;
 }
 
-function renderSessionEnergyMeter() {
+function selectedBillingRate() {
+  const rate = Number(billingRate?.value || 750);
+  const optionText =
+    billingRate?.selectedOptions?.[0]?.textContent || "Private car";
+
+  return {
+    rate: Number.isFinite(rate) && rate > 0 ? rate : 750,
+    vehicleType: optionText.split("·")[0].trim() || "Private car"
+  };
+}
+
+function sessionIdentity(slot = {}) {
+  const latest = lastStationSnapshot?.rfid?.latestScan || {};
+  const uid = normalizeUid(
+    slot.uid || slot.cardUid || latest.uid || latestDetectedUid
+  );
+  const knownCard = bookingCardDirectory().find(card => card.uid === uid);
+
+  return {
+    uid,
+    owner: String(
+      slot.owner ||
+      slot.userName ||
+      latest.userName ||
+      knownCard?.name ||
+      "Registered RFID user"
+    ).trim(),
+    plate: String(
+      slot.plate || latest.plate || knownCard?.plate || ""
+    ).trim(),
+    slot: String(slot.slot || latest.slot || "Slot 1").trim()
+  };
+}
+
+function makeReceiptId(timestamp) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Yangon",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h23"
+    })
+      .formatToParts(new Date(timestamp || Date.now()))
+      .filter(part => part.type !== "literal")
+      .map(part => [part.type, part.value])
+  );
+
+  return `SEV-${parts.year}${parts.month}${parts.day}-${parts.hour}${parts.minute}${parts.second}`;
+}
+
+function formatReceiptTime(timestamp) {
+  const numeric = Number(timestamp);
+
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return "—";
+  }
+
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Yangon",
+    dateStyle: "medium",
+    timeStyle: "medium"
+  }).format(new Date(numeric));
+}
+
+function formatSessionDuration(startedAt, endedAt) {
+  const seconds = Math.max(
+    0,
+    Math.round((Number(endedAt) - Number(startedAt)) / 1000)
+  );
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+
+  return minutes > 0
+    ? `${minutes} min ${remainingSeconds} sec`
+    : `${remainingSeconds} sec`;
+}
+
+function meterProjection() {
   const prototypeEnergyWh = Math.max(0, Number(sessionMeter.energyWh) || 0);
   const projectedEnergyKwh =
     prototypeEnergyWh * DIGITAL_TWIN_POWER_SCALE / 1000;
@@ -1451,19 +1569,64 @@ function renderSessionEnergyMeter() {
     DIGITAL_TWIN_CURRENT_SCALE;
   const projectedPowerKw =
     Math.max(0, Number(sessionMeter.latestModelPowerW) || 0) / 1000;
-  const rate = Number(billingRate?.value || 750);
+  const selectedRate = selectedBillingRate();
+  const rate = Number(sessionMeter.rate) > 0
+    ? Number(sessionMeter.rate)
+    : selectedRate.rate;
   const sessionCost = projectedEnergyKwh * rate;
   const projectedHourEnergyKwh = projectedPowerKw;
   const projectedHourCost = projectedHourEnergyKwh * rate;
-  const hasSession = projectedEnergyKwh > 0;
 
-  setText("projectedVoltage", `${projectedVoltage.toFixed(1)} V`);
-  setText("projectedCurrent", `${projectedCurrent.toFixed(2)} A`);
-  setText("projectedPower", `${projectedPowerKw.toFixed(3)} kW`);
-  setText("sessionEnergyKwh", `${projectedEnergyKwh.toFixed(6)} kWh`);
-  setText("sessionCost", `K${sessionCost.toFixed(2)}`);
-  setText("projectedHourEnergy", `${projectedHourEnergyKwh.toFixed(3)} kWh`);
-  setText("projectedHourCost", `K${projectedHourCost.toFixed(2)}`);
+  return {
+    projectedEnergyKwh,
+    projectedVoltage,
+    projectedCurrent,
+    projectedPowerKw,
+    projectedHourEnergyKwh,
+    projectedHourCost,
+    rate,
+    sessionCost
+  };
+}
+
+function renderChargingReceipt(projection = meterProjection()) {
+  setText("receiptId", sessionMeter.receiptId || "—");
+  setText("receiptOwner", sessionMeter.owner || "Registered RFID user");
+  setText("receiptUid", sessionMeter.uid || "—");
+  setText("receiptPlate", sessionMeter.plate || "—");
+  setText("receiptSlot", sessionMeter.slot || "Slot 1");
+  setText("receiptVehicleType", sessionMeter.vehicleType || "Private car");
+  setText("receiptStartedAt", formatReceiptTime(sessionMeter.startedAt));
+  setText("receiptEndedAt", formatReceiptTime(sessionMeter.endedAt));
+  setText(
+    "receiptDuration",
+    formatSessionDuration(sessionMeter.startedAt, sessionMeter.endedAt)
+  );
+  setText(
+    "receiptEnergy",
+    `${projection.projectedEnergyKwh.toFixed(6)} kWh`
+  );
+  setText("receiptRate", `K${projection.rate.toFixed(2)} / kWh`);
+  setText("receiptTotal", `K${projection.sessionCost.toFixed(2)}`);
+}
+
+function renderSessionEnergyMeter() {
+  const projection = meterProjection();
+  const hasSession =
+    sessionMeter.active ||
+    sessionMeter.completed ||
+    projection.projectedEnergyKwh > 0;
+
+  setText("projectedVoltage", `${projection.projectedVoltage.toFixed(1)} V`);
+  setText("projectedCurrent", `${projection.projectedCurrent.toFixed(2)} A`);
+  setText("projectedPower", `${projection.projectedPowerKw.toFixed(3)} kW`);
+  setText("sessionEnergyKwh", `${projection.projectedEnergyKwh.toFixed(6)} kWh`);
+  setText("sessionCost", `K${projection.sessionCost.toFixed(2)}`);
+  setText(
+    "projectedHourEnergy",
+    `${projection.projectedHourEnergyKwh.toFixed(3)} kWh`
+  );
+  setText("projectedHourCost", `K${projection.projectedHourCost.toFixed(2)}`);
   setText(
     "sessionMeterStatus",
     sessionMeter.active
@@ -1474,6 +1637,58 @@ function renderSessionEnergyMeter() {
     "meterSourceState",
     sessionMeter.active ? "LIVE INPUT" : (hasSession ? "COMPLETE" : "WAITING")
   );
+
+  if (billingRate) {
+    billingRate.disabled = sessionMeter.active || sessionMeter.completed;
+  }
+
+  if (meterSessionActions) {
+    meterSessionActions.hidden = !sessionMeter.completed;
+  }
+
+  renderChargingReceipt(projection);
+}
+
+function closeReceipt() {
+  if (!chargingReceiptDialog) return;
+
+  if (typeof chargingReceiptDialog.close === "function" && chargingReceiptDialog.open) {
+    chargingReceiptDialog.close();
+  } else {
+    chargingReceiptDialog.removeAttribute("open");
+  }
+}
+
+function showReceipt(automatic = false) {
+  if (!sessionMeter.completed || !chargingReceiptDialog) return;
+
+  if (
+    automatic &&
+    receiptPresentedFor === sessionMeter.receiptId
+  ) {
+    return;
+  }
+
+  renderChargingReceipt();
+  receiptPresentedFor = sessionMeter.receiptId;
+
+  if (!chargingReceiptDialog.open) {
+    if (typeof chargingReceiptDialog.showModal === "function") {
+      chargingReceiptDialog.showModal();
+    } else {
+      chargingReceiptDialog.setAttribute("open", "");
+    }
+  }
+}
+
+function clearCompletedSession() {
+  if (sessionMeter.active) return;
+
+  sessionMeter = emptySessionMeter();
+  receiptPresentedFor = "";
+  saveData(ENERGY_METER_STORAGE_KEY, sessionMeter);
+  closeReceipt();
+  renderSessionEnergyMeter();
 }
 
 function updateSessionEnergyMeter(slot = {}) {
@@ -1490,17 +1705,31 @@ function updateSessionEnergyMeter(slot = {}) {
   const current = Math.max(0, Number(slot.current) || 0);
   const power = voltage * current;
   const modelPower = power * DIGITAL_TWIN_POWER_SCALE;
+  let sessionJustCompleted = false;
 
   if (charging && !sessionMeter.active) {
+    const identity = sessionIdentity(slot);
+    const billing = selectedBillingRate();
+
     sessionMeter = {
+      ...emptySessionMeter(),
       active: true,
-      energyWh: 0,
+      startedAt: timestamp,
+      receiptId: makeReceiptId(timestamp),
+      owner: identity.owner,
+      uid: identity.uid,
+      plate: identity.plate,
+      slot: identity.slot,
+      rate: billing.rate,
+      vehicleType: billing.vehicleType,
       lastSampleAt: timestamp,
       lastPowerW: power,
       latestVoltage: voltage,
       latestCurrent: current,
       latestModelPowerW: modelPower
     };
+    receiptPresentedFor = "";
+    closeReceipt();
   } else if (
     charging &&
     timestamp > Number(sessionMeter.lastSampleAt || 0)
@@ -1521,22 +1750,57 @@ function updateSessionEnergyMeter(slot = {}) {
     sessionMeter.latestCurrent = current;
     sessionMeter.latestModelPowerW = modelPower;
   } else if (!charging && sessionMeter.active) {
+    const elapsedMs = Math.min(
+      Math.max(
+        0,
+        timestamp - Number(sessionMeter.lastSampleAt || timestamp)
+      ),
+      15000
+    );
+    const finalPower = Math.max(0, Number(sessionMeter.lastPowerW) || 0);
+
+    sessionMeter.energyWh =
+      Math.max(0, Number(sessionMeter.energyWh) || 0) +
+      finalPower * elapsedMs / 3600000;
     sessionMeter.active = false;
+    sessionMeter.completed = true;
+    sessionMeter.endedAt = timestamp;
+    sessionMeter.receiptId =
+      sessionMeter.receiptId || makeReceiptId(sessionMeter.startedAt || timestamp);
     sessionMeter.lastSampleAt = timestamp;
     sessionMeter.lastPowerW = 0;
+    sessionJustCompleted = true;
   }
 
   saveData(ENERGY_METER_STORAGE_KEY, sessionMeter);
   renderSessionEnergyMeter();
+
+  if (sessionJustCompleted) {
+    showReceipt(true);
+  }
 }
 
 if (billingRate) {
   billingRate.value = localStorage.getItem(BILLING_RATE_STORAGE_KEY) || "750";
   billingRate.addEventListener("change", () => {
     localStorage.setItem(BILLING_RATE_STORAGE_KEY, billingRate.value);
-    renderSessionEnergyMeter();
+
+    if (!sessionMeter.active && !sessionMeter.completed) {
+      renderSessionEnergyMeter();
+    }
   });
 }
+
+viewReceiptBtn?.addEventListener("click", () => showReceipt(false));
+resetSessionBtn?.addEventListener("click", clearCompletedSession);
+closeReceiptBtn?.addEventListener("click", closeReceipt);
+printReceiptBtn?.addEventListener("click", () => window.print());
+
+chargingReceiptDialog?.addEventListener("click", event => {
+  if (event.target === chargingReceiptDialog) {
+    closeReceipt();
+  }
+});
 
 renderSessionEnergyMeter();
 
