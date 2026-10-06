@@ -130,7 +130,7 @@ function applyOwnerOnlyUi() {
   const bookingNote = document.querySelector("#booking .booking-info .note-box");
   if (bookingNote) {
     bookingNote.textContent =
-      "The RFID UID is the unique booking identity. The owner name is verified and filled automatically.";
+      "Type the RFID UID printed on the card. The verified owner name fills automatically, and unregistered cards cannot book.";
   }
 
   const style = document.createElement("style");
@@ -193,7 +193,7 @@ function watchDetectedCard() {
 }
 
 async function installOwnerOnlyBehavior() {
-  const service = await import("./firebase-service.js?v=20261006-rfid-booking-v11");
+  const service = await import("./firebase-service.js?v=20261006-rfid-typing-v12");
 
   document.addEventListener("submit", async event => {
     const form = event.target;
