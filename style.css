@@ -689,60 +689,296 @@ button{
   box-shadow:var(--shadow);
 }
 
-.session-meter-panel{
-  margin-top:16px;
+/* ===========================
+   400V-CLASS EV METER
+=========================== */
+
+.meter-page-hero{
+  position:relative;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 82% 35%,rgba(29,204,138,.24),transparent 29%),
+    radial-gradient(circle at 68% 0,rgba(37,198,217,.17),transparent 31%),
+    linear-gradient(125deg,#061321,#0b2940 62%,#073a35);
+}
+
+.meter-page-hero:after{
+  content:"";
+  position:absolute;
+  right:-90px;
+  bottom:-150px;
+  width:420px;
+  height:420px;
+  border:1px solid rgba(105,236,190,.2);
+  border-radius:50%;
+  box-shadow:
+    0 0 0 42px rgba(105,236,190,.035),
+    0 0 0 96px rgba(105,236,190,.025);
+}
+
+.meter-page-hero>*{
+  position:relative;
+  z-index:1;
+}
+
+.meter-scale-pills{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:22px;
+}
+
+.meter-scale-pills span{
+  border:1px solid rgba(109,232,190,.34);
+  background:rgba(6,31,37,.7);
+  color:#8df3cb;
+  border-radius:99px;
+  padding:8px 11px;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.7px;
+}
+
+.meter-section-wrap{
+  max-width:1240px;
+}
+
+.projection-disclaimer{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:15px;
+  padding:16px 18px;
+  margin-bottom:16px;
+  border:1px solid #c9eee0;
+  border-left:4px solid var(--green);
+  border-radius:14px;
+  background:linear-gradient(110deg,#e7f9f2,#f8fcfb);
+}
+
+.projection-mark{
+  display:grid;
+  place-items:center;
+  width:44px;
+  height:44px;
+  border-radius:12px;
+  background:#09253a;
+  color:#6de8be;
+  font-size:12px;
+  font-weight:950;
+  letter-spacing:1px;
+}
+
+.projection-disclaimer b{
+  display:block;
+  color:#075b42;
+  font-size:12px;
+  letter-spacing:.4px;
+}
+
+.projection-disclaimer p{
+  margin:4px 0 0;
+  color:#577069;
+  font-size:12px;
+  line-height:1.55;
+}
+
+.ev-meter-console{
+  border:1px solid #1a4656;
+  background:
+    radial-gradient(circle at 100% 0,rgba(29,204,138,.13),transparent 28%),
+    linear-gradient(145deg,#071827,#0a2234);
+  color:#eef8f8;
+  box-shadow:0 18px 42px rgba(8,23,40,.18);
+}
+
+.meter-console-head{
+  display:flex;
+  align-items:start;
+  justify-content:space-between;
+  gap:24px;
+}
+
+.meter-console-head h2{
+  margin:0;
+  font-size:clamp(24px,4vw,38px);
+}
+
+.meter-console-copy{
+  max-width:700px;
+  margin:8px 0 0;
+  color:#9bb1bd;
+  font-size:12px;
+  line-height:1.6;
 }
 
 .billing-rate-control{
-  min-width:230px;
-  color:var(--muted);
+  min-width:245px;
+  color:#9db3be;
   font-size:10px;
   font-weight:800;
+  letter-spacing:.4px;
 }
 
 .billing-rate-control select{
   width:100%;
-  margin-top:5px;
-  padding:9px 10px;
-  border:1px solid var(--border);
-  border-radius:8px;
-  background:#fbfdfe;
-  color:var(--ink);
+  margin-top:6px;
+  padding:10px 11px;
+  border:1px solid #315265;
+  border-radius:9px;
+  background:#102b3e;
+  color:#f2fafb;
 }
 
-.session-meter-grid{
+.ev-meter-live-grid{
   display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
-  gap:10px;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+  margin-top:24px;
 }
 
-.session-meter-grid>div{
-  padding:14px;
-  border:1px solid #dcebe6;
-  border-radius:11px;
-  background:#f2faf7;
+.ev-meter-reading{
+  position:relative;
+  min-height:142px;
+  padding:18px;
+  border:1px solid #25465a;
+  border-radius:15px;
+  background:rgba(15,43,62,.72);
+  overflow:hidden;
 }
 
-.session-meter-grid small{
+.ev-meter-reading.featured-reading{
+  border-color:rgba(57,219,159,.48);
+  background:linear-gradient(145deg,rgba(13,79,62,.72),rgba(12,52,56,.72));
+}
+
+.meter-reading-icon{
+  position:absolute;
+  right:15px;
+  top:13px;
+  display:grid;
+  place-items:center;
+  min-width:34px;
+  height:34px;
+  padding:0 7px;
+  border-radius:10px;
+  background:rgba(109,232,190,.1);
+  color:#6de8be;
+  font-size:11px;
+  font-weight:900;
+}
+
+.ev-meter-reading small,
+.billing-result small,
+.meter-session-footer small{
   display:block;
-  color:var(--muted);
+  color:#8da6b3;
   font-size:9px;
   font-weight:900;
-  letter-spacing:1px;
+  letter-spacing:1.2px;
 }
 
-.session-meter-grid strong{
+.ev-meter-reading strong{
+  display:block;
+  margin-top:22px;
+  color:#f3fbfa;
+  font-size:clamp(25px,4vw,38px);
+  line-height:1;
+}
+
+.ev-meter-reading em{
+  display:block;
+  margin-top:10px;
+  color:#82a0ad;
+  font-size:10px;
+  font-style:normal;
+}
+
+.meter-divider{
+  height:1px;
+  margin:24px 0;
+  background:linear-gradient(90deg,transparent,#2b5163 10%,#2b5163 90%,transparent);
+}
+
+.ev-meter-billing-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+}
+
+.billing-result{
+  padding:17px;
+  border:1px solid #24485b;
+  border-radius:14px;
+  background:#0c2639;
+}
+
+.billing-result.main-billing-result,
+.billing-result.cost-result{
+  grid-column:span 2;
+  background:linear-gradient(135deg,rgba(12,72,61,.85),rgba(10,44,52,.85));
+  border-color:rgba(62,211,157,.42);
+}
+
+.billing-result strong{
+  display:block;
+  margin:8px 0 6px;
+  color:#72efc2;
+  font-size:clamp(20px,3vw,31px);
+}
+
+.billing-result span{
+  color:#89a4b0;
+  font-size:10px;
+}
+
+.meter-session-footer{
+  display:grid;
+  grid-template-columns:minmax(190px,.55fr) 1.45fr;
+  gap:24px;
+  align-items:center;
+  margin-top:18px;
+  padding:16px 18px;
+  border:1px solid #24475a;
+  border-radius:13px;
+  background:rgba(5,18,30,.7);
+}
+
+.meter-session-footer strong{
   display:block;
   margin-top:7px;
-  color:#087c52;
-  font-size:18px;
+  color:#ffca67;
+  font-size:14px;
 }
 
-.meter-note{
-  margin:12px 0 0;
-  color:var(--muted);
+.meter-session-footer p{
+  margin:0;
+  color:#91a8b4;
   font-size:11px;
-  line-height:1.5;
+  line-height:1.6;
+}
+
+.meter-method-row{
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  align-items:center;
+  gap:14px;
+  margin-top:16px;
+  padding:14px 18px;
+  border:1px solid var(--border);
+  border-radius:13px;
+  background:#fff;
+  box-shadow:var(--shadow);
+  color:#586b78;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.8px;
+  text-align:center;
+}
+
+.meter-method-row b{
+  color:#087c52;
+  font-size:13px;
 }
 
 /* ===========================
@@ -1423,7 +1659,7 @@ button{
 
   .metric-grid,
   .measurement-grid,
-  .session-meter-grid{
+  .ev-meter-billing-grid{
     grid-template-columns:repeat(2,1fr);
   }
 
@@ -1459,7 +1695,8 @@ button{
 
   .metric-grid,
   .measurement-grid,
-  .session-meter-grid,
+  .ev-meter-live-grid,
+  .ev-meter-billing-grid,
   .slot-grid,
   .two-col,
   .booking-layout,
@@ -1470,8 +1707,31 @@ button{
     grid-template-columns:1fr;
   }
 
-  .session-meter-panel .panel-head{
+  .meter-console-head{
     flex-direction:column;
+  }
+
+  .projection-disclaimer{
+    grid-template-columns:auto 1fr;
+  }
+
+  .projection-disclaimer .status-tag{
+    grid-column:1 / -1;
+    justify-self:start;
+  }
+
+  .billing-result.main-billing-result,
+  .billing-result.cost-result{
+    grid-column:span 1;
+  }
+
+  .meter-session-footer,
+  .meter-method-row{
+    grid-template-columns:1fr;
+  }
+
+  .meter-method-row{
+    gap:8px;
   }
 
   .billing-rate-control{

@@ -370,8 +370,12 @@ let bookings = loadData("evBookings");
 
 const NO_SHOW_GRACE_MINUTES = 15;
 const BOOKING_CLAIMS_STORAGE_KEY = "evBookingClaimsV1";
-const ENERGY_METER_STORAGE_KEY = "evSessionMeterV1";
+const ENERGY_METER_STORAGE_KEY = "evDigitalTwinMeterV2";
 const BILLING_RATE_STORAGE_KEY = "evBillingRateV1";
+const DIGITAL_TWIN_VOLTAGE_SCALE = 50;
+const DIGITAL_TWIN_CURRENT_SCALE = 5;
+const DIGITAL_TWIN_POWER_SCALE =
+  DIGITAL_TWIN_VOLTAGE_SCALE * DIGITAL_TWIN_CURRENT_SCALE;
 
 let claimedBookingIds = new Set(
   loadData(BOOKING_CLAIMS_STORAGE_KEY)
@@ -383,7 +387,10 @@ let sessionMeter = loadData(ENERGY_METER_STORAGE_KEY, {
   active: false,
   energyWh: 0,
   lastSampleAt: 0,
-  lastPowerW: 0
+  lastPowerW: 0,
+  latestVoltage: 0,
+  latestCurrent: 0,
+  latestModelPowerW: 0
 });
 
 const bookingForm =
@@ -1346,6 +1353,11 @@ function showSlotOffline(slotNumber) {
     setText("telemetryVoltage", "-- V");
     setText("telemetryCurrent", "-- A");
     setText("telemetryTemperature", "-- °C");
+    setText("meterSourceState", "STATION OFFLINE");
+
+    if (sessionMeter.active) {
+      setText("sessionMeterStatus", "DATA PAUSED");
+    }
   }
 }
 function slotStateLabel(state) {
@@ -1422,27 +1434,49 @@ function applySlotTelemetry(slotNumber, slot = {}) {
     setText("telemetryVoltage", `${voltage.toFixed(2)} V`);
     setText("telemetryCurrent", `${current.toFixed(2)} A`);
     setText("telemetryTemperature", `${temperature.toFixed(1)} °C`);
-    updateSessionEnergyMeter(slot, power);
+    updateSessionEnergyMeter(slot);
   }
   return true;
 }
 
 function renderSessionEnergyMeter() {
-  const energyWh = Math.max(0, Number(sessionMeter.energyWh) || 0);
-  const energyKwh = energyWh / 1000;
+  const prototypeEnergyWh = Math.max(0, Number(sessionMeter.energyWh) || 0);
+  const projectedEnergyKwh =
+    prototypeEnergyWh * DIGITAL_TWIN_POWER_SCALE / 1000;
+  const projectedVoltage =
+    Math.max(0, Number(sessionMeter.latestVoltage) || 0) *
+    DIGITAL_TWIN_VOLTAGE_SCALE;
+  const projectedCurrent =
+    Math.max(0, Number(sessionMeter.latestCurrent) || 0) *
+    DIGITAL_TWIN_CURRENT_SCALE;
+  const projectedPowerKw =
+    Math.max(0, Number(sessionMeter.latestModelPowerW) || 0) / 1000;
   const rate = Number(billingRate?.value || 750);
-  const cost = energyKwh * rate;
+  const sessionCost = projectedEnergyKwh * rate;
+  const projectedHourEnergyKwh = projectedPowerKw;
+  const projectedHourCost = projectedHourEnergyKwh * rate;
+  const hasSession = projectedEnergyKwh > 0;
 
-  setText("sessionEnergyWh", `${energyWh.toFixed(3)} Wh`);
-  setText("sessionEnergyKwh", `${energyKwh.toFixed(6)} kWh`);
-  setText("sessionCost", `K${cost.toFixed(2)}`);
+  setText("projectedVoltage", `${projectedVoltage.toFixed(1)} V`);
+  setText("projectedCurrent", `${projectedCurrent.toFixed(2)} A`);
+  setText("projectedPower", `${projectedPowerKw.toFixed(3)} kW`);
+  setText("sessionEnergyKwh", `${projectedEnergyKwh.toFixed(6)} kWh`);
+  setText("sessionCost", `K${sessionCost.toFixed(2)}`);
+  setText("projectedHourEnergy", `${projectedHourEnergyKwh.toFixed(3)} kWh`);
+  setText("projectedHourCost", `K${projectedHourCost.toFixed(2)}`);
   setText(
     "sessionMeterStatus",
-    sessionMeter.active ? "MEASURING" : (energyWh > 0 ? "SESSION COMPLETE" : "WAITING")
+    sessionMeter.active
+      ? "LIVE PROJECTION"
+      : (hasSession ? "SESSION COMPLETE" : "WAITING FOR CHARGING")
+  );
+  setText(
+    "meterSourceState",
+    sessionMeter.active ? "LIVE INPUT" : (hasSession ? "COMPLETE" : "WAITING")
   );
 }
 
-function updateSessionEnergyMeter(slot = {}, powerW = 0) {
+function updateSessionEnergyMeter(slot = {}) {
   const timestamp = Number(slot.updatedAt);
   if (!Number.isFinite(timestamp) || timestamp <= 0) {
     renderSessionEnergyMeter();
@@ -1452,14 +1486,20 @@ function updateSessionEnergyMeter(slot = {}, powerW = 0) {
   const charging =
     String(slot.state || "").toLowerCase() === "charging" &&
     slot.relay === true;
-  const power = Math.max(0, Number(powerW) || 0);
+  const voltage = Math.max(0, Number(slot.voltage) || 0);
+  const current = Math.max(0, Number(slot.current) || 0);
+  const power = voltage * current;
+  const modelPower = power * DIGITAL_TWIN_POWER_SCALE;
 
   if (charging && !sessionMeter.active) {
     sessionMeter = {
       active: true,
       energyWh: 0,
       lastSampleAt: timestamp,
-      lastPowerW: power
+      lastPowerW: power,
+      latestVoltage: voltage,
+      latestCurrent: current,
+      latestModelPowerW: modelPower
     };
   } else if (
     charging &&
@@ -1477,6 +1517,9 @@ function updateSessionEnergyMeter(slot = {}, powerW = 0) {
       averagePower * elapsedMs / 3600000;
     sessionMeter.lastSampleAt = timestamp;
     sessionMeter.lastPowerW = power;
+    sessionMeter.latestVoltage = voltage;
+    sessionMeter.latestCurrent = current;
+    sessionMeter.latestModelPowerW = modelPower;
   } else if (!charging && sessionMeter.active) {
     sessionMeter.active = false;
     sessionMeter.lastSampleAt = timestamp;

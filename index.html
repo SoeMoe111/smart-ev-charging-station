@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#081728">
   <title>IOT Smart EV Charging Station</title>
   <meta name="description" content="IoT based Smart EV Charging Station - Fifth Year Electrical Engineering Project">
-  <link rel="stylesheet" href="style.css?v=20261006-no-show-meter-v13">
+  <link rel="stylesheet" href="style.css?v=20261006-400v-meter-v14">
 </head>
 <body>
 
@@ -27,6 +27,7 @@
 
   <nav class="top-nav" aria-label="Main navigation">
     <button class="nav-tab active" data-page="dashboard">Dashboard</button>
+    <button class="nav-tab" data-page="meter">400V EV Meter</button>
     <button class="nav-tab" data-page="booking">Booking</button>
     <button class="nav-tab admin-only hidden" data-page="rfid">RFID Access</button>
     <button class="nav-tab" data-page="chargers">Yangon Chargers</button>
@@ -279,11 +280,56 @@
       </article>
     </div>
 
-    <article class="panel session-meter-panel">
-      <div class="panel-head">
+    <div class="dashboard-actions">
+      <button class="primary-btn" data-go="booking">BOOK A CHARGING SLOT</button>
+      <button class="secondary-btn" data-go="meter">OPEN 400V EV METER</button>
+      <button class="secondary-btn" data-go="rfid">OPEN RFID ACCESS</button>
+    </div>
+
+  </div>
+</section>
+
+<section id="meter" class="page ev-meter-page">
+
+  <div class="page-hero meter-page-hero">
+    <p class="eyebrow">400V-CLASS DIGITAL TWIN</p>
+    <h1>Projected EV energy meter</h1>
+    <p>
+      A transparent engineering projection that maps the low-voltage prototype
+      to a 400V-class EV charging model while the physical safety system remains
+      controlled only by the real INA219 measurements.
+    </p>
+
+    <div class="meter-scale-pills" aria-label="Digital twin scale factors">
+      <span>VOLTAGE ×50</span>
+      <span>CURRENT ×5</span>
+      <span>POWER &amp; ENERGY ×250</span>
+    </div>
+  </div>
+
+  <div class="section-wrap meter-section-wrap">
+
+    <div class="projection-disclaimer">
+      <div class="projection-mark" aria-hidden="true">EV</div>
+      <div>
+        <b>PROJECTED MODEL — NOT AN ACTUAL UTILITY BILL</b>
+        <p>
+          Meter units and cost on this page are shown only for the 400V-class EV model.
+          Actual prototype energy units are intentionally not displayed.
+        </p>
+      </div>
+      <span id="meterSourceState" class="status-tag">WAITING</span>
+    </div>
+
+    <article class="panel ev-meter-console">
+      <div class="meter-console-head">
         <div>
-          <p class="section-kicker">LIVE SESSION METER</p>
-          <h3>Measured energy & charging cost</h3>
+          <p class="section-kicker">LIVE DIGITAL TWIN</p>
+          <h2>400V-class charging output</h2>
+          <p class="meter-console-copy">
+            Live values are derived from Slot 1 using one consistent scale, so
+            projected power always remains equal to voltage × current.
+          </p>
         </div>
 
         <label class="billing-rate-control">
@@ -295,36 +341,77 @@
         </label>
       </div>
 
-      <div class="session-meter-grid">
-        <div>
-          <small>MEASURED ENERGY</small>
-          <strong id="sessionEnergyWh">0.000 Wh</strong>
+      <div class="ev-meter-live-grid">
+        <div class="ev-meter-reading">
+          <span class="meter-reading-icon">V</span>
+          <small>PROJECTED VOLTAGE</small>
+          <strong id="projectedVoltage">0.0 V</strong>
+          <em>400V-class range</em>
         </div>
-        <div>
-          <small>METER UNITS</small>
-          <strong id="sessionEnergyKwh">0.000000 kWh</strong>
+
+        <div class="ev-meter-reading">
+          <span class="meter-reading-icon">A</span>
+          <small>PROJECTED CURRENT</small>
+          <strong id="projectedCurrent">0.00 A</strong>
+          <em>Scaled live current</em>
         </div>
-        <div>
-          <small>ESTIMATED COST</small>
-          <strong id="sessionCost">K0.00</strong>
-        </div>
-        <div>
-          <small>SESSION</small>
-          <strong id="sessionMeterStatus">WAITING</strong>
+
+        <div class="ev-meter-reading featured-reading">
+          <span class="meter-reading-icon">kW</span>
+          <small>PROJECTED POWER</small>
+          <strong id="projectedPower">0.000 kW</strong>
+          <em>Voltage × current</em>
         </div>
       </div>
 
-      <p class="meter-note">
-        Prototype calculation from live INA219 power. 1 electricity unit = 1 kWh. The meter resets automatically when a new charging session starts.
-      </p>
+      <div class="meter-divider" aria-hidden="true"></div>
+
+      <div class="ev-meter-billing-grid">
+        <div class="billing-result main-billing-result">
+          <small>PROJECTED SESSION METER UNITS</small>
+          <strong id="sessionEnergyKwh">0.000000 kWh</strong>
+          <span>1 electricity unit = 1 kWh</span>
+        </div>
+
+        <div class="billing-result cost-result">
+          <small>PROJECTED SESSION COST</small>
+          <strong id="sessionCost">K0.00</strong>
+          <span>Based on selected vehicle rate</span>
+        </div>
+
+        <div class="billing-result">
+          <small>PROJECTED 1-HOUR ENERGY</small>
+          <strong id="projectedHourEnergy">0.000 kWh</strong>
+          <span>At the latest charging power</span>
+        </div>
+
+        <div class="billing-result">
+          <small>PROJECTED 1-HOUR COST</small>
+          <strong id="projectedHourCost">K0.00</strong>
+          <span>Reference estimate only</span>
+        </div>
+      </div>
+
+      <div class="meter-session-footer">
+        <div>
+          <small>SESSION STATUS</small>
+          <strong id="sessionMeterStatus">WAITING FOR CHARGING</strong>
+        </div>
+        <p>
+          A new charging session resets the projected meter automatically.
+          RFID, relay control and all protection limits continue to use actual values.
+        </p>
+      </div>
     </article>
 
-    <div class="dashboard-actions">
-      <button class="primary-btn" data-go="booking">BOOK A CHARGING SLOT</button>
-      <button class="secondary-btn" data-go="rfid">OPEN RFID ACCESS</button>
+    <div class="meter-method-row">
+      <span>2S PROTOTYPE</span>
+      <b>×50 V · ×5 A</b>
+      <span>400V-CLASS EV MODEL</span>
     </div>
 
   </div>
+
 </section>
 
 <section id="booking" class="page">
@@ -1002,7 +1089,7 @@
 
 </footer>
 
-<script type="module" src="app.js?v=20261006-no-show-meter-v13"></script>
+<script type="module" src="app.js?v=20261006-400v-meter-v14"></script>
 
 </body>
 </html>
