@@ -28,13 +28,36 @@ test("booking payload stores the selected card UID and verified owner", async ()
   assert.match(app, /42 8D 50 07/);
 });
 
+test("booking policy releases no-shows after 15 minutes and remembers RFID check-in", async () => {
+  const app = await readProjectFile("app.js");
+  const html = await readProjectFile("index.html");
+
+  assert.match(app, /NO_SHOW_GRACE_MINUTES = 15/);
+  assert.match(app, /bookingIsNoShowExpired/);
+  assert.match(app, /rememberClaimedBooking\(uid, timestamp, slotName = ""\)/);
+  assert.match(app, /\(!slotName \|\| booking\.slot === slotName\)/);
+  assert.match(app, /expired\.filter\(canManageBooking\)/);
+  assert.match(html, /Arrive within 15 minutes/);
+});
+
+test("live INA219 power is integrated into kWh and priced at both published rates", async () => {
+  const app = await readProjectFile("app.js");
+  const html = await readProjectFile("index.html");
+
+  assert.match(app, /averagePower \* elapsedMs \/ 3600000/);
+  assert.match(app, /energyKwh \* rate/);
+  assert.match(html, /Private car · K750\/kWh/);
+  assert.match(html, /Passenger EV \/ Taxi · K700\/kWh/);
+  assert.match(html, /1 electricity unit = 1 kWh/);
+});
+
 test("legacy RFID owner helper preserves all four project cards", async () => {
   const helper = await readProjectFile("rfid-owner-mode.js");
 
   assert.match(helper, /"42 8D 50 07": "Dr\. Than Than Swe"/);
   assert.match(helper, /RESTORE 4 PROJECT CARDS/);
   assert.doesNotMatch(helper, /Driver Name must match/);
-  assert.match(helper, /unregistered cards cannot book/);
+  assert.match(helper, /within 15 minutes/);
 });
 
 test("database rules require and index RFID UID bookings", async () => {
