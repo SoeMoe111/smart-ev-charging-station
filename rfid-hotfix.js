@@ -46,7 +46,7 @@ function clearStaleRfidUi() {
 }
 
 async function bootRfidHotfix() {
-  const service = await import("./firebase-service.js?v=20261006-no-show-meter-v13");
+  const service = await import("./firebase-service.js?v=20261006-fast-live-v16");
 
   const startStationWatch = () => {
     try {
