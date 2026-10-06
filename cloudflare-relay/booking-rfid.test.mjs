@@ -76,6 +76,41 @@ test("400V-class meter uses one transparent projection and hides actual units", 
   assert.equal(projectedPower, projectedVoltage * projectedCurrent);
 });
 
+test("completed charging finalizes the last interval and creates a projected receipt", async () => {
+  const app = await readProjectFile("app.js");
+  const html = await readProjectFile("index.html");
+  const css = await readProjectFile("style.css");
+
+  assert.match(app, /sessionMeter\.completed = true/);
+  assert.match(app, /finalPower \* elapsedMs \/ 3600000/);
+  assert.match(app, /sessionMeter\.endedAt = timestamp/);
+  assert.match(app, /showReceipt\(true\)/);
+  assert.match(app, /function clearCompletedSession\(\)/);
+  assert.match(html, /id="chargingReceiptDialog"/);
+  assert.match(html, /id="receiptOwner"/);
+  assert.match(html, /id="receiptUid"/);
+  assert.match(html, /id="receiptDuration"/);
+  assert.match(html, /id="receiptEnergy"/);
+  assert.match(html, /id="receiptRate"/);
+  assert.match(html, /id="receiptTotal"/);
+  assert.match(html, /PRINT \/ SAVE RECEIPT/);
+  assert.match(html, /NEW SESSION \/ CLEAR METER/);
+  assert.match(html, /PROTOTYPE ESTIMATE/);
+  assert.match(css, /@media print/);
+
+  const startingEnergyWh = 0.05;
+  const lastPowerW = 8;
+  const finalIntervalMs = 5000;
+  const finalPrototypeEnergyWh =
+    startingEnergyWh + lastPowerW * finalIntervalMs / 3600000;
+  const projectedEnergyKwh = finalPrototypeEnergyWh * 250 / 1000;
+  const projectedCost = projectedEnergyKwh * 750;
+
+  assert.equal(finalPrototypeEnergyWh.toFixed(6), "0.061111");
+  assert.equal(projectedEnergyKwh.toFixed(6), "0.015278");
+  assert.equal(projectedCost.toFixed(2), "11.46");
+});
+
 test("legacy RFID owner helper preserves all four project cards", async () => {
   const helper = await readProjectFile("rfid-owner-mode.js");
 
