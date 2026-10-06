@@ -689,6 +689,62 @@ button{
   box-shadow:var(--shadow);
 }
 
+.session-meter-panel{
+  margin-top:16px;
+}
+
+.billing-rate-control{
+  min-width:230px;
+  color:var(--muted);
+  font-size:10px;
+  font-weight:800;
+}
+
+.billing-rate-control select{
+  width:100%;
+  margin-top:5px;
+  padding:9px 10px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:#fbfdfe;
+  color:var(--ink);
+}
+
+.session-meter-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+}
+
+.session-meter-grid>div{
+  padding:14px;
+  border:1px solid #dcebe6;
+  border-radius:11px;
+  background:#f2faf7;
+}
+
+.session-meter-grid small{
+  display:block;
+  color:var(--muted);
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:1px;
+}
+
+.session-meter-grid strong{
+  display:block;
+  margin-top:7px;
+  color:#087c52;
+  font-size:18px;
+}
+
+.meter-note{
+  margin:12px 0 0;
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.5;
+}
+
 /* ===========================
    BUTTONS
 =========================== */
@@ -910,6 +966,19 @@ button{
 .booking-item span{
   font-size:11px;
   color:var(--muted);
+}
+
+.booking-arrival-state{
+  display:block;
+  margin-top:5px;
+  color:#a46a00;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.5px;
+}
+
+.booking-arrival-state.checked-in{
+  color:#087c52;
 }
 
 .empty-state{
@@ -1353,7 +1422,8 @@ button{
 @media(max-width:1000px){
 
   .metric-grid,
-  .measurement-grid{
+  .measurement-grid,
+  .session-meter-grid{
     grid-template-columns:repeat(2,1fr);
   }
 
@@ -1389,6 +1459,7 @@ button{
 
   .metric-grid,
   .measurement-grid,
+  .session-meter-grid,
   .slot-grid,
   .two-col,
   .booking-layout,
@@ -1397,6 +1468,15 @@ button{
   .form-grid,
   .step-grid{
     grid-template-columns:1fr;
+  }
+
+  .session-meter-panel .panel-head{
+    flex-direction:column;
+  }
+
+  .billing-rate-control{
+    width:100%;
+    min-width:0;
   }
 
   .soc-row{

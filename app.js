@@ -13,7 +13,7 @@ import {
   deleteAllRfidUsers,
   subscribeStation,
   normalizeUid
-} from "./firebase-service.js?v=20261006-rfid-typing-v12";
+} from "./firebase-service.js?v=20261006-no-show-meter-v13";
 
 // ============================================
 // SMART EV CHARGING STATION - FIREBASE APP
@@ -368,6 +368,24 @@ adminLogoutBtn?.addEventListener("click", async () => {
 
 let bookings = loadData("evBookings");
 
+const NO_SHOW_GRACE_MINUTES = 15;
+const BOOKING_CLAIMS_STORAGE_KEY = "evBookingClaimsV1";
+const ENERGY_METER_STORAGE_KEY = "evSessionMeterV1";
+const BILLING_RATE_STORAGE_KEY = "evBillingRateV1";
+
+let claimedBookingIds = new Set(
+  loadData(BOOKING_CLAIMS_STORAGE_KEY)
+);
+
+let noShowCleanupRunning = false;
+
+let sessionMeter = loadData(ENERGY_METER_STORAGE_KEY, {
+  active: false,
+  energyWh: 0,
+  lastSampleAt: 0,
+  lastPowerW: 0
+});
+
 const bookingForm =
   document.getElementById("bookingForm");
 
@@ -385,6 +403,9 @@ const bookingCardHint =
 
 const bookingSubmitBtn =
   document.getElementById("bookingSubmitBtn");
+
+const billingRate =
+  document.getElementById("billingRate");
 
 const slot1Bookings =
   document.getElementById("slot1Bookings");
@@ -506,6 +527,109 @@ function canManageBooking(booking) {
     );
 }
 
+function bookingStartTimestamp(booking) {
+  const date = String(booking?.date || "");
+  const time = String(booking?.time || "");
+  const timestamp = Date.parse(`${date}T${time}:00+06:30`);
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function bookingArrivalDeadline(booking) {
+  const start = bookingStartTimestamp(booking);
+  return start
+    ? start + NO_SHOW_GRACE_MINUTES * 60000
+    : 0;
+}
+
+function bookingWasClaimed(booking) {
+  return Boolean(booking?.id && claimedBookingIds.has(booking.id));
+}
+
+function bookingIsNoShowExpired(booking, now = Date.now()) {
+  const deadline = bookingArrivalDeadline(booking);
+  return Boolean(
+    deadline &&
+    now >= deadline &&
+    !bookingWasClaimed(booking)
+  );
+}
+
+function formatArrivalDeadline(booking) {
+  const deadline = bookingArrivalDeadline(booking);
+  if (!deadline) return "";
+
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Yangon",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).format(new Date(deadline));
+}
+
+function rememberClaimedBooking(uid, timestamp, slotName = "") {
+  const normalizedUid = normalizeUid(uid);
+  const scanTime = Number(timestamp);
+
+  if (!normalizedUid || !Number.isFinite(scanTime) || scanTime <= 0) {
+    return;
+  }
+
+  let changed = false;
+
+  bookings.forEach(booking => {
+    const start = bookingStartTimestamp(booking);
+    const deadline = bookingArrivalDeadline(booking);
+
+    if (
+      booking.id &&
+      normalizeUid(booking.uid) === normalizedUid &&
+      (!slotName || booking.slot === slotName) &&
+      scanTime >= start &&
+      scanTime < deadline &&
+      !claimedBookingIds.has(booking.id)
+    ) {
+      claimedBookingIds.add(booking.id);
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    saveData(
+      BOOKING_CLAIMS_STORAGE_KEY,
+      [...claimedBookingIds]
+    );
+    renderBookings();
+  }
+}
+
+async function expireNoShowBookings() {
+  if (noShowCleanupRunning) return;
+
+  const expired = bookings.filter(bookingIsNoShowExpired);
+  if (!expired.length) return;
+
+  noShowCleanupRunning = true;
+
+  try {
+    if (firebaseMode) {
+      const removable = expired.filter(canManageBooking);
+      await Promise.all(
+        removable.map(booking => deleteBooking(booking.id))
+      );
+    } else {
+      bookings = bookings.filter(
+        booking => !bookingIsNoShowExpired(booking)
+      );
+      saveData("evBookings", bookings);
+    }
+  } catch (error) {
+    console.error("Automatic no-show cleanup failed", error);
+  } finally {
+    noShowCleanupRunning = false;
+    renderBookings();
+  }
+}
+
 
 function renderSlotBookings(slotName, target) {
 
@@ -516,7 +640,10 @@ function renderSlotBookings(slotName, target) {
       ...booking,
       originalIndex: index
     }))
-    .filter(booking => booking.slot === slotName)
+    .filter(booking =>
+      booking.slot === slotName &&
+      !bookingIsNoShowExpired(booking)
+    )
     .sort((a, b) =>
       `${a.date}T${a.time}`.localeCompare(
         `${b.date}T${b.time}`
@@ -552,6 +679,12 @@ function renderSlotBookings(slotName, target) {
             ? ` · RFID ${escapeHtml(maskUid(booking.uid))}`
             : ""}
         </span>
+
+        <small class="booking-arrival-state ${bookingWasClaimed(booking) ? "checked-in" : ""}">
+          ${bookingWasClaimed(booking)
+            ? "RFID CHECK-IN CONFIRMED"
+            : `ARRIVE BY ${escapeHtml(formatArrivalDeadline(booking))} · 15-MINUTE HOLD`}
+        </small>
       </div>
 
       ${canManageBooking(booking) ? `
@@ -666,6 +799,10 @@ if (bookingForm) {
       const conflict =
         bookings.some(existing => {
 
+          if (bookingIsNoShowExpired(existing)) {
+            return false;
+          }
+
           if (
             existing.slot !== data.slot ||
             existing.date !== data.date
@@ -777,6 +914,11 @@ if (clearBookings) {
 
 applyBookingCardInput();
 renderBookings();
+
+setInterval(() => {
+  expireNoShowBookings();
+  renderBookings();
+}, 30000);
 
 
 // ============================================
@@ -1048,6 +1190,7 @@ function applyRfidStationState(rfid = {}) {
   if (!scanResult || !uid) return;
 
   if (latest.granted === true) {
+    rememberClaimedBooking(uid, timestamp, String(latest.slot || ""));
     scanResult.className = "scan-result granted";
     scanResult.innerHTML =
       `ACCESS GRANTED<br>${escapeHtml(latest.userName || "Registered user")}` +
@@ -1279,9 +1422,80 @@ function applySlotTelemetry(slotNumber, slot = {}) {
     setText("telemetryVoltage", `${voltage.toFixed(2)} V`);
     setText("telemetryCurrent", `${current.toFixed(2)} A`);
     setText("telemetryTemperature", `${temperature.toFixed(1)} °C`);
+    updateSessionEnergyMeter(slot, power);
   }
   return true;
 }
+
+function renderSessionEnergyMeter() {
+  const energyWh = Math.max(0, Number(sessionMeter.energyWh) || 0);
+  const energyKwh = energyWh / 1000;
+  const rate = Number(billingRate?.value || 750);
+  const cost = energyKwh * rate;
+
+  setText("sessionEnergyWh", `${energyWh.toFixed(3)} Wh`);
+  setText("sessionEnergyKwh", `${energyKwh.toFixed(6)} kWh`);
+  setText("sessionCost", `K${cost.toFixed(2)}`);
+  setText(
+    "sessionMeterStatus",
+    sessionMeter.active ? "MEASURING" : (energyWh > 0 ? "SESSION COMPLETE" : "WAITING")
+  );
+}
+
+function updateSessionEnergyMeter(slot = {}, powerW = 0) {
+  const timestamp = Number(slot.updatedAt);
+  if (!Number.isFinite(timestamp) || timestamp <= 0) {
+    renderSessionEnergyMeter();
+    return;
+  }
+
+  const charging =
+    String(slot.state || "").toLowerCase() === "charging" &&
+    slot.relay === true;
+  const power = Math.max(0, Number(powerW) || 0);
+
+  if (charging && !sessionMeter.active) {
+    sessionMeter = {
+      active: true,
+      energyWh: 0,
+      lastSampleAt: timestamp,
+      lastPowerW: power
+    };
+  } else if (
+    charging &&
+    timestamp > Number(sessionMeter.lastSampleAt || 0)
+  ) {
+    const elapsedMs = Math.min(
+      timestamp - Number(sessionMeter.lastSampleAt || timestamp),
+      15000
+    );
+    const averagePower =
+      (Math.max(0, Number(sessionMeter.lastPowerW) || 0) + power) / 2;
+
+    sessionMeter.energyWh =
+      Math.max(0, Number(sessionMeter.energyWh) || 0) +
+      averagePower * elapsedMs / 3600000;
+    sessionMeter.lastSampleAt = timestamp;
+    sessionMeter.lastPowerW = power;
+  } else if (!charging && sessionMeter.active) {
+    sessionMeter.active = false;
+    sessionMeter.lastSampleAt = timestamp;
+    sessionMeter.lastPowerW = 0;
+  }
+
+  saveData(ENERGY_METER_STORAGE_KEY, sessionMeter);
+  renderSessionEnergyMeter();
+}
+
+if (billingRate) {
+  billingRate.value = localStorage.getItem(BILLING_RATE_STORAGE_KEY) || "750";
+  billingRate.addEventListener("change", () => {
+    localStorage.setItem(BILLING_RATE_STORAGE_KEY, billingRate.value);
+    renderSessionEnergyMeter();
+  });
+}
+
+renderSessionEnergyMeter();
 
 function applyStationTelemetry(station = {}) {
   lastStationSnapshot = station || {};

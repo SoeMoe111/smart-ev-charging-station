@@ -1,4 +1,4 @@
-import { firebaseConfigured } from "./firebase-config.js?v=20261006-rfid-typing-v12";
+import { firebaseConfigured } from "./firebase-config.js?v=20261006-no-show-meter-v13";
 
 const FIREBASE_RELAY_ORIGIN =
   "https://smart-ev-firebase-relay.ldqr-501416499.chatgpt.site";
