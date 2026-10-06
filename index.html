@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#081728">
   <title>IOT Smart EV Charging Station</title>
   <meta name="description" content="IoT based Smart EV Charging Station - Fifth Year Electrical Engineering Project">
-  <link rel="stylesheet" href="style.css?v=20261006-rfid-booking-v10">
+  <link rel="stylesheet" href="style.css?v=20261006-no-show-meter-v13">
 </head>
 <body>
 
@@ -279,6 +279,46 @@
       </article>
     </div>
 
+    <article class="panel session-meter-panel">
+      <div class="panel-head">
+        <div>
+          <p class="section-kicker">LIVE SESSION METER</p>
+          <h3>Measured energy & charging cost</h3>
+        </div>
+
+        <label class="billing-rate-control">
+          Vehicle rate
+          <select id="billingRate">
+            <option value="750">Private car · K750/kWh</option>
+            <option value="700">Passenger EV / Taxi · K700/kWh</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="session-meter-grid">
+        <div>
+          <small>MEASURED ENERGY</small>
+          <strong id="sessionEnergyWh">0.000 Wh</strong>
+        </div>
+        <div>
+          <small>METER UNITS</small>
+          <strong id="sessionEnergyKwh">0.000000 kWh</strong>
+        </div>
+        <div>
+          <small>ESTIMATED COST</small>
+          <strong id="sessionCost">K0.00</strong>
+        </div>
+        <div>
+          <small>SESSION</small>
+          <strong id="sessionMeterStatus">WAITING</strong>
+        </div>
+      </div>
+
+      <p class="meter-note">
+        Prototype calculation from live INA219 power. 1 electricity unit = 1 kWh. The meter resets automatically when a new charging session starts.
+      </p>
+    </article>
+
     <div class="dashboard-actions">
       <button class="primary-btn" data-go="booking">BOOK A CHARGING SLOT</button>
       <button class="secondary-btn" data-go="rfid">OPEN RFID ACCESS</button>
@@ -379,16 +419,17 @@
       <aside class="panel booking-info">
 
         <p class="section-kicker">HOW IT WORKS</p>
-        <h3>Conflict-aware reservation</h3>
+        <h3>Conflict-aware reservation & no-show release</h3>
 
         <ol>
           <li>Type the RFID UID printed on the card; the verified owner name fills automatically.</li>
           <li>The website checks the shared Firebase calendar and rejects overlaps.</li>
+          <li>Arrive within 15 minutes of the booked start time or the slot is released automatically.</li>
           <li>At the station, tap the same card. Its UID must match the confirmed booking.</li>
         </ol>
 
         <div class="note-box">
-          UID formats such as 42 8D 50 07 and 428D5007 are accepted. Unregistered cards cannot create a booking.
+          A successful RFID check-in during the 15-minute arrival window keeps the booking active. Unregistered cards cannot create a booking.
         </div>
 
       </aside>
@@ -961,7 +1002,7 @@
 
 </footer>
 
-<script type="module" src="app.js?v=20261006-rfid-typing-v12"></script>
+<script type="module" src="app.js?v=20261006-no-show-meter-v13"></script>
 
 </body>
 </html>
