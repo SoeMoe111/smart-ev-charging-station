@@ -39,7 +39,7 @@ test("website can sign in anonymously and read through one Worker path", async (
   };
 
   const runnable = source.replace(
-    'import { firebaseConfigured } from "./firebase-config.js?v=20261006-no-show-meter-v13";',
+    'import { firebaseConfigured } from "./firebase-config.js?v=20261006-fast-live-v16";',
     "const firebaseConfigured = true;"
   );
   const service = await import("data:text/javascript;base64," +
@@ -90,7 +90,7 @@ test("duplicate station subscribers share one relay polling request", async () =
   };
 
   const runnable = source.replace(
-    'import { firebaseConfigured } from "./firebase-config.js?v=20261006-no-show-meter-v13";',
+    'import { firebaseConfigured } from "./firebase-config.js?v=20261006-fast-live-v16";',
     "const firebaseConfigured = true;"
   );
   const service = await import("data:text/javascript;base64," +
@@ -117,7 +117,10 @@ test("duplicate station subscribers share one relay polling request", async () =
 });
 
 test("relay polling backs off after repeated errors", () => {
-  assert.match(source, /RELAY_POLL_MAX_BACKOFF_MS\s*=\s*60000/);
+  assert.match(source, /STATION_RELAY_POLL_INTERVAL_MS\s*=\s*2000/);
+  assert.match(source, /STATION_RELAY_POLL_MAX_BACKOFF_MS\s*=\s*15000/);
+  assert.match(source, /DEFAULT_RELAY_POLL_MAX_BACKOFF_MS\s*=\s*60000/);
+  assert.match(source, /path === `stations\/\$\{STATION_ID\}`/);
   assert.match(source, /2 \*\* Math\.min\(failureCount, 4\)/);
   assert.match(source, /relayPollers = new Map\(\)/);
 });
