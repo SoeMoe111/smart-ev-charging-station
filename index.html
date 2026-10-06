@@ -313,18 +313,24 @@
         <div class="form-grid">
 
           <label>
-            Registered RFID Card
-            <select id="bookingCard" required>
-              <option value="">Select registered RFID card</option>
-            </select>
+            RFID Card UID
+            <input
+              id="bookingCard"
+              placeholder="Example: 42 8D 50 07"
+              autocomplete="off"
+              autocapitalize="characters"
+              spellcheck="false"
+              maxlength="20"
+              aria-describedby="bookingCardHint"
+              required>
             <small id="bookingCardHint" class="field-hint">
-              Choose a registered card, or tap it on the station reader.
+              Type the UID printed on the card. Spaces are optional.
             </small>
           </label>
 
           <label>
             Card Owner
-            <input id="driver" placeholder="Auto-filled from the selected card" readonly required>
+            <input id="driver" placeholder="Auto-filled after UID verification" readonly required>
           </label>
 
           <label>
@@ -362,7 +368,7 @@
 
         </div>
 
-        <button class="primary-btn wide" type="submit">
+        <button id="bookingSubmitBtn" class="primary-btn wide" type="submit" disabled>
           CHECK CONFLICT & CONFIRM BOOKING
         </button>
 
@@ -376,13 +382,13 @@
         <h3>Conflict-aware reservation</h3>
 
         <ol>
-          <li>Select the registered RFID card; the verified owner name fills automatically.</li>
+          <li>Type the RFID UID printed on the card; the verified owner name fills automatically.</li>
           <li>The website checks the shared Firebase calendar and rejects overlaps.</li>
           <li>At the station, tap the same card. Its UID must match the confirmed booking.</li>
         </ol>
 
         <div class="note-box">
-          The UID is used as the unique booking identity, but it is selected or scanned instead of typed manually.
+          UID formats such as 42 8D 50 07 and 428D5007 are accepted. Unregistered cards cannot create a booking.
         </div>
 
       </aside>
@@ -955,7 +961,7 @@
 
 </footer>
 
-<script type="module" src="app.js?v=20261006-rfid-booking-v11"></script>
+<script type="module" src="app.js?v=20261006-rfid-typing-v12"></script>
 
 </body>
 </html>
