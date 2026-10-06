@@ -13,7 +13,7 @@ import {
   deleteAllRfidUsers,
   subscribeStation,
   normalizeUid
-} from "./firebase-service.js?v=20261006-no-show-meter-v13";
+} from "./firebase-service.js?v=20261006-fast-live-v16";
 
 // ============================================
 // SMART EV CHARGING STATION - FIREBASE APP
