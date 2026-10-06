@@ -13,7 +13,7 @@ import {
   deleteAllRfidUsers,
   subscribeStation,
   normalizeUid
-} from "./firebase-service.js?v=20261006-rfid-booking-v11";
+} from "./firebase-service.js?v=20261006-rfid-typing-v12";
 
 // ============================================
 // SMART EV CHARGING STATION - FIREBASE APP
@@ -383,6 +383,9 @@ const bookingDriver =
 const bookingCardHint =
   document.getElementById("bookingCardHint");
 
+const bookingSubmitBtn =
+  document.getElementById("bookingSubmitBtn");
+
 const slot1Bookings =
   document.getElementById("slot1Bookings");
 
@@ -438,7 +441,7 @@ function bookingCardDirectory() {
   );
 }
 
-function applyBookingCardSelection() {
+function applyBookingCardInput() {
   if (!bookingCard || !bookingDriver) return;
 
   const selectedUid = normalizeUid(bookingCard.value);
@@ -449,40 +452,49 @@ function applyBookingCardSelection() {
   bookingDriver.value = selectedCard?.name || "";
   bookingDriver.readOnly = true;
 
+  if (selectedCard) {
+    bookingCard.value = selectedCard.uid;
+    bookingCard.setAttribute("aria-invalid", "false");
+  } else {
+    bookingCard.setAttribute(
+      "aria-invalid",
+      bookingCard.value.trim() ? "true" : "false"
+    );
+  }
+
+  if (bookingSubmitBtn) {
+    bookingSubmitBtn.disabled = !selectedCard;
+  }
+
   if (bookingCardHint) {
+    bookingCardHint.className = selectedCard
+      ? "field-hint ok"
+      : (bookingCard.value.trim() ? "field-hint error" : "field-hint");
     bookingCardHint.textContent = selectedCard
       ? `Owner verified · UID ${maskUid(selectedCard.uid)}`
-      : "Choose a registered card, or tap it on the station reader.";
+      : (bookingCard.value.trim()
+          ? "Unregistered RFID card. Check the UID and try again."
+          : "Type the UID printed on the card. Spaces are optional.");
   }
+
+  return selectedCard || null;
 }
 
-function renderBookingCardOptions(preferredUid = "") {
+function setBookingCardUid(preferredUid = "") {
   if (!bookingCard) return;
 
-  const wantedUid = normalizeUid(
-    preferredUid || bookingCard.value
-  );
-  const cards = bookingCardDirectory();
-
-  bookingCard.innerHTML = [
-    '<option value="">Select registered RFID card</option>',
-    ...cards.map(card => `
-      <option value="${escapeHtml(card.uid)}">
-        ${escapeHtml(card.name)} · ${escapeHtml(maskUid(card.uid))}
-      </option>
-    `)
-  ].join("");
-
-  if (cards.some(card => card.uid === wantedUid)) {
-    bookingCard.value = wantedUid;
-  }
-
-  applyBookingCardSelection();
+  bookingCard.value = normalizeUid(preferredUid);
+  applyBookingCardInput();
 }
 
 bookingCard?.addEventListener(
-  "change",
-  applyBookingCardSelection
+  "input",
+  applyBookingCardInput
+);
+
+bookingCard?.addEventListener(
+  "blur",
+  applyBookingCardInput
 );
 
 function canManageBooking(booking) {
@@ -611,7 +623,7 @@ if (bookingForm) {
       if (!selectedCard) {
         bookingMsg.className = "form-message error";
         bookingMsg.textContent =
-          "Select a registered RFID card before confirming the booking.";
+          "Enter a registered RFID card UID before confirming the booking.";
         return;
       }
 
@@ -709,7 +721,7 @@ if (bookingForm) {
           : `Booking confirmed locally for ${selectedCard.name}.`;
 
         bookingForm.reset();
-        renderBookingCardOptions();
+        setBookingCardUid();
       } catch (error) {
         console.error(error);
         bookingMsg.className = "form-message error";
@@ -763,7 +775,7 @@ if (clearBookings) {
   );
 }
 
-renderBookingCardOptions();
+applyBookingCardInput();
 renderBookings();
 
 
@@ -820,7 +832,7 @@ function renderUsers() {
     `
     ).join("");
 
-  renderBookingCardOptions();
+  applyBookingCardInput();
 }
 
 
@@ -1028,7 +1040,7 @@ function applyRfidStationState(rfid = {}) {
       active: true
     };
 
-    renderBookingCardOptions(uid);
+    setBookingCardUid(uid);
   }
 
   updateRfidEnrollmentUi();
