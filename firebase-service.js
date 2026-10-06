@@ -1,20 +1,24 @@
-import { firebaseConfigured } from "./firebase-config.js?v=20261006-no-show-meter-v13";
+import { firebaseConfigured } from "./firebase-config.js?v=20261006-fast-live-v16";
 
 const FIREBASE_RELAY_ORIGIN =
   "https://smart-ev-firebase-relay.ldqr-501416499.chatgpt.site";
 const FIREBASE_RELAY_URL = `${FIREBASE_RELAY_ORIGIN}/firebase`;
 const FIREBASE_AUTH_URL = `${FIREBASE_RELAY_ORIGIN}/auth`;
 
-// Match the ESP32's 5-second telemetry cadence and leave free-relay quota headroom.
-const RELAY_POLL_INTERVAL_MS = 5000;
-const RELAY_POLL_MAX_BACKOFF_MS = 60000;
+// Poll only live station telemetry faster. Booking/RFID administration keeps
+// the existing 5-second cadence so one exhibition dashboard stays responsive
+// without multiplying every relay request.
+const DEFAULT_RELAY_POLL_INTERVAL_MS = 5000;
+const STATION_RELAY_POLL_INTERVAL_MS = 2000;
+const DEFAULT_RELAY_POLL_MAX_BACKOFF_MS = 60000;
+const STATION_RELAY_POLL_MAX_BACKOFF_MS = 15000;
 
 const STATION_ID = "demo-station";
 export const ADMIN_UID = "fM6p0sQzQbaqKAmuQFGA6mNolJU2";
 
 const AUTH_STORAGE_KEY = "smartEvFirebaseRelaySessionV1";
 const AUTH_REFRESH_MARGIN_MS = 2 * 60 * 1000;
-const REQUEST_TIMEOUT_MS = 15000;
+const REQUEST_TIMEOUT_MS = 10000;
 
 let currentSession = null;
 let refreshPromise = null;
@@ -254,12 +258,28 @@ async function relayRequest(path, options = {}) {
   }
 }
 
-function pollDelay(failureCount) {
-  if (failureCount <= 0) return RELAY_POLL_INTERVAL_MS;
+function relayPollPolicy(path) {
+  if (path === `stations/${STATION_ID}`) {
+    return {
+      intervalMs: STATION_RELAY_POLL_INTERVAL_MS,
+      maxBackoffMs: STATION_RELAY_POLL_MAX_BACKOFF_MS
+    };
+  }
+
+  return {
+    intervalMs: DEFAULT_RELAY_POLL_INTERVAL_MS,
+    maxBackoffMs: DEFAULT_RELAY_POLL_MAX_BACKOFF_MS
+  };
+}
+
+function pollDelay(path, failureCount) {
+  const { intervalMs, maxBackoffMs } = relayPollPolicy(path);
+
+  if (failureCount <= 0) return intervalMs;
 
   return Math.min(
-    RELAY_POLL_INTERVAL_MS * (2 ** Math.min(failureCount, 4)),
-    RELAY_POLL_MAX_BACKOFF_MS
+    intervalMs * (2 ** Math.min(failureCount, 4)),
+    maxBackoffMs
   );
 }
 
@@ -322,7 +342,7 @@ function createRelayPoller(path) {
       }
     } finally {
       poller.running = false;
-      schedule(pollDelay(poller.failureCount));
+      schedule(pollDelay(path, poller.failureCount));
     }
   };
 
