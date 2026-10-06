@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#081728">
   <title>IOT Smart EV Charging Station</title>
   <meta name="description" content="IoT based Smart EV Charging Station - Fifth Year Electrical Engineering Project">
-  <link rel="stylesheet" href="style.css?v=20261006-400v-meter-v14">
+  <link rel="stylesheet" href="style.css?v=20261006-final-receipt-v15">
 </head>
 <body>
 
@@ -402,6 +402,15 @@
           RFID, relay control and all protection limits continue to use actual values.
         </p>
       </div>
+
+      <div id="meterSessionActions" class="meter-session-actions" hidden>
+        <button id="viewReceiptBtn" class="receipt-primary-btn" type="button">
+          VIEW FINAL RECEIPT
+        </button>
+        <button id="resetSessionBtn" class="receipt-secondary-btn" type="button">
+          NEW SESSION / CLEAR METER
+        </button>
+      </div>
     </article>
 
     <div class="meter-method-row">
@@ -413,6 +422,64 @@
   </div>
 
 </section>
+
+<dialog id="chargingReceiptDialog" class="receipt-dialog" aria-labelledby="receiptTitle">
+  <article id="chargingReceipt" class="charging-receipt">
+    <header class="receipt-header">
+      <div class="receipt-brand-mark" aria-hidden="true">⚡</div>
+      <div>
+        <p>IOT SMART EV CHARGING STATION</p>
+        <h2 id="receiptTitle">Charging Session Complete</h2>
+      </div>
+      <span class="receipt-status">FINAL ESTIMATE</span>
+    </header>
+
+    <div class="receipt-model-note">
+      400V-CLASS PROJECTED CHARGING RECEIPT · PROTOTYPE ESTIMATE
+    </div>
+
+    <dl class="receipt-details">
+      <div><dt>Receipt ID</dt><dd id="receiptId">—</dd></div>
+      <div><dt>Charging slot</dt><dd id="receiptSlot">Slot 1</dd></div>
+      <div><dt>Card owner</dt><dd id="receiptOwner">—</dd></div>
+      <div><dt>Card UID</dt><dd id="receiptUid">—</dd></div>
+      <div><dt>Vehicle / plate</dt><dd id="receiptPlate">—</dd></div>
+      <div><dt>Vehicle rate</dt><dd id="receiptVehicleType">—</dd></div>
+      <div><dt>Start time</dt><dd id="receiptStartedAt">—</dd></div>
+      <div><dt>End time</dt><dd id="receiptEndedAt">—</dd></div>
+      <div><dt>Charging duration</dt><dd id="receiptDuration">—</dd></div>
+    </dl>
+
+    <div class="receipt-billing">
+      <div>
+        <span>Projected energy</span>
+        <strong id="receiptEnergy">0.000000 kWh</strong>
+      </div>
+      <div>
+        <span>Rate</span>
+        <strong id="receiptRate">K750.00 / kWh</strong>
+      </div>
+      <div class="receipt-total">
+        <span>Total projected amount</span>
+        <strong id="receiptTotal">K0.00</strong>
+      </div>
+    </div>
+
+    <p class="receipt-disclaimer">
+      This receipt is calculated from the transparent 400V-class digital-twin
+      projection. It is a prototype estimate and not an actual utility bill.
+    </p>
+
+    <footer class="receipt-actions">
+      <button id="printReceiptBtn" class="receipt-primary-btn" type="button">
+        PRINT / SAVE RECEIPT
+      </button>
+      <button id="closeReceiptBtn" class="receipt-secondary-btn" type="button">
+        CLOSE
+      </button>
+    </footer>
+  </article>
+</dialog>
 
 <section id="booking" class="page">
 
@@ -1089,7 +1156,7 @@
 
 </footer>
 
-<script type="module" src="app.js?v=20261006-400v-meter-v14"></script>
+<script type="module" src="app.js?v=20261006-final-receipt-v15"></script>
 
 </body>
 </html>
