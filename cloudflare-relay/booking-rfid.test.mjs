@@ -40,15 +40,40 @@ test("booking policy releases no-shows after 15 minutes and remembers RFID check
   assert.match(html, /Arrive within 15 minutes/);
 });
 
-test("live INA219 power is integrated into kWh and priced at both published rates", async () => {
+test("400V-class meter uses one transparent projection and hides actual units", async () => {
   const app = await readProjectFile("app.js");
   const html = await readProjectFile("index.html");
 
+  assert.match(app, /DIGITAL_TWIN_VOLTAGE_SCALE = 50/);
+  assert.match(app, /DIGITAL_TWIN_CURRENT_SCALE = 5/);
+  assert.match(
+    app,
+    /DIGITAL_TWIN_POWER_SCALE =\s*\n\s*DIGITAL_TWIN_VOLTAGE_SCALE \* DIGITAL_TWIN_CURRENT_SCALE/
+  );
   assert.match(app, /averagePower \* elapsedMs \/ 3600000/);
-  assert.match(app, /energyKwh \* rate/);
+  assert.match(
+    app,
+    /prototypeEnergyWh \* DIGITAL_TWIN_POWER_SCALE \/ 1000/
+  );
+  assert.match(app, /projectedEnergyKwh \* rate/);
+  assert.match(html, /data-page="meter">400V EV Meter/);
+  assert.match(html, /400V-CLASS DIGITAL TWIN/);
+  assert.match(html, /PROJECTED SESSION METER UNITS/);
+  assert.match(html, /PROJECTED MODEL — NOT AN ACTUAL UTILITY BILL/);
+  assert.doesNotMatch(html, /id="sessionEnergyWh"/);
   assert.match(html, /Private car · K750\/kWh/);
   assert.match(html, /Passenger EV \/ Taxi · K700\/kWh/);
   assert.match(html, /1 electricity unit = 1 kWh/);
+
+  const actualVoltage = 7.6;
+  const actualCurrent = 1;
+  const projectedVoltage = actualVoltage * 50;
+  const projectedCurrent = actualCurrent * 5;
+  const projectedPower = actualVoltage * actualCurrent * 250;
+
+  assert.equal(projectedVoltage, 380);
+  assert.equal(projectedCurrent, 5);
+  assert.equal(projectedPower, projectedVoltage * projectedCurrent);
 });
 
 test("legacy RFID owner helper preserves all four project cards", async () => {
