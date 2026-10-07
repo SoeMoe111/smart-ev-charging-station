@@ -15,6 +15,8 @@ import {
   normalizeUid
 } from "./firebase-service.js?v=20261007-stability-v17";
 
+import { chargingEstimate } from "./charging-estimate.js?v=20261007-estimated-v18";
+
 // ============================================
 // SMART EV CHARGING STATION - FIREBASE APP
 // ============================================
@@ -372,7 +374,8 @@ let bookings = loadData("evBookings");
 
 const NO_SHOW_GRACE_MINUTES = 15;
 const BOOKING_CLAIMS_STORAGE_KEY = "evBookingClaimsV1";
-const ENERGY_METER_STORAGE_KEY = "evDigitalTwinMeterV3";
+// Keep previous measured-input receipts separate from estimated-model receipts.
+const ENERGY_METER_STORAGE_KEY = "evDigitalTwinEstimatedMeterV1";
 const BILLING_RATE_STORAGE_KEY = "evBillingRateV1";
 const DIGITAL_TWIN_VOLTAGE_SCALE = 50;
 const DIGITAL_TWIN_CURRENT_SCALE = 5;
@@ -389,6 +392,7 @@ function emptySessionMeter() {
   return {
     active: false,
     completed: false,
+    dataPaused: false,
     energyWh: 0,
     lastSampleAt: 0,
     lastPowerW: 0,
@@ -1405,8 +1409,14 @@ function showSlotOffline(slotNumber) {
     setText("telemetryCurrent", "-- A");
     setText("telemetryTemperature", "-- °C");
     setText("meterSourceState", "STATION OFFLINE");
+    setText("projectedVoltage", "-- V");
+    setText("projectedCurrent", "-- A");
+    setText("projectedPower", "-- kW");
+    setText("projectedHourEnergy", "-- kWh");
+    setText("projectedHourCost", "--");
 
     if (sessionMeter.active) {
+      sessionMeter.dataPaused = true;
       setText("sessionMeterStatus", "DATA PAUSED");
     }
   }
@@ -1425,17 +1435,19 @@ function slotStateLabel(state) {
 }
 
 function applySlotTelemetry(slotNumber, slot = {}) {
-    if (!slotIsFresh(slot)) {
+  if (!slotIsFresh(slot)) {
     showSlotOffline(slotNumber);
     return false;
-    }
+  }
   const prefix = `slot${slotNumber}`;
   const state = String(slot.state || "offline").toLowerCase();
   const voltage = finiteNumber(slot.voltage);
-  const current = finiteNumber(slot.current);
-  const power = Number.isFinite(Number(slot.power))
-    ? Number(slot.power)
-    : voltage * current;
+  const estimate = chargingEstimate(slot);
+  const current = slotNumber === 1
+    ? estimate.current : finiteNumber(slot.current);
+  const power = slotNumber === 1
+    ? estimate.power : (Number.isFinite(Number(slot.power))
+        ? Number(slot.power) : voltage * current);
   const temperature = finiteNumber(slot.temperature);
   const soc = Math.max(0, Math.min(100, finiteNumber(slot.soc)));
   const protection = String(slot.protection || "waiting").toUpperCase();
@@ -1575,14 +1587,15 @@ function meterProjection() {
   const prototypeEnergyWh = Math.max(0, Number(sessionMeter.energyWh) || 0);
   const projectedEnergyKwh =
     prototypeEnergyWh * DIGITAL_TWIN_POWER_SCALE / 1000;
-  const projectedVoltage =
-    Math.max(0, Number(sessionMeter.latestVoltage) || 0) *
-    DIGITAL_TWIN_VOLTAGE_SCALE;
-  const projectedCurrent =
-    Math.max(0, Number(sessionMeter.latestCurrent) || 0) *
-    DIGITAL_TWIN_CURRENT_SCALE;
-  const projectedPowerKw =
-    Math.max(0, Number(sessionMeter.latestModelPowerW) || 0) / 1000;
+  const liveOutput = sessionMeter.active && !sessionMeter.dataPaused;
+  const projectedVoltage = liveOutput
+    ? Math.max(0, Number(sessionMeter.latestVoltage) || 0) *
+      DIGITAL_TWIN_VOLTAGE_SCALE : 0;
+  const projectedCurrent = liveOutput
+    ? Math.max(0, Number(sessionMeter.latestCurrent) || 0) *
+      DIGITAL_TWIN_CURRENT_SCALE : 0;
+  const projectedPowerKw = liveOutput
+    ? Math.max(0, Number(sessionMeter.latestModelPowerW) || 0) / 1000 : 0;
   const selectedRate = selectedBillingRate();
   const rate = Number(sessionMeter.rate) > 0
     ? Number(sessionMeter.rate)
@@ -1644,12 +1657,14 @@ function renderSessionEnergyMeter() {
   setText(
     "sessionMeterStatus",
     sessionMeter.active
-      ? "LIVE PROJECTION"
+      ? (sessionMeter.dataPaused ? "DATA PAUSED" : "CHARGING ESTIMATE")
       : (hasSession ? "SESSION COMPLETE" : "WAITING FOR CHARGING")
   );
   setText(
     "meterSourceState",
-    sessionMeter.active ? "LIVE INPUT" : (hasSession ? "COMPLETE" : "WAITING")
+    sessionMeter.active
+      ? (sessionMeter.dataPaused ? "STATION OFFLINE" : "MODEL ESTIMATE")
+      : (hasSession ? "COMPLETE" : "WAITING")
   );
 
   if (billingRate) {
@@ -1712,12 +1727,10 @@ function updateSessionEnergyMeter(slot = {}) {
     return;
   }
 
-  const charging =
-    String(slot.state || "").toLowerCase() === "charging" &&
-    slot.relay === true;
-  const voltage = Math.max(0, Number(slot.voltage) || 0);
-  const current = Math.max(0, Number(slot.current) || 0);
-  const power = voltage * current;
+  const estimate = chargingEstimate(slot);
+  if (!estimate.fresh) return;
+
+  const { charging, voltage, current, power } = estimate;
   const modelPower = power * DIGITAL_TWIN_POWER_SCALE;
   let sessionJustCompleted = false;
 
@@ -1748,7 +1761,7 @@ function updateSessionEnergyMeter(slot = {}) {
     charging &&
     timestamp > Number(sessionMeter.lastSampleAt || 0)
   ) {
-    const elapsedMs = Math.min(
+    const elapsedMs = sessionMeter.dataPaused ? 0 : Math.min(
       timestamp - Number(sessionMeter.lastSampleAt || timestamp),
       15000
     );
@@ -1763,8 +1776,9 @@ function updateSessionEnergyMeter(slot = {}) {
     sessionMeter.latestVoltage = voltage;
     sessionMeter.latestCurrent = current;
     sessionMeter.latestModelPowerW = modelPower;
+    sessionMeter.dataPaused = false;
   } else if (!charging && sessionMeter.active) {
-    const elapsedMs = Math.min(
+    const elapsedMs = sessionMeter.dataPaused ? 0 : Math.min(
       Math.max(
         0,
         timestamp - Number(sessionMeter.lastSampleAt || timestamp)
@@ -1778,6 +1792,7 @@ function updateSessionEnergyMeter(slot = {}) {
       finalPower * elapsedMs / 3600000;
     sessionMeter.active = false;
     sessionMeter.completed = true;
+    sessionMeter.dataPaused = false;
     sessionMeter.endedAt = timestamp;
     sessionMeter.receiptId =
       sessionMeter.receiptId || makeReceiptId(sessionMeter.startedAt || timestamp);
@@ -1838,13 +1853,14 @@ function applyStationTelemetry(station = {}) {
 
   setCloudStatus("cloud", "FIREBASE LIVE");
 
+  const slot1Estimate = chargingEstimate(slot1);
   const totalCurrent =
-    finiteNumber(slot1.current) +
-    finiteNumber(slot2.current);
+    slot1Estimate.current +
+    (slot2Live ? finiteNumber(slot2.current) : 0);
 
   const totalPower =
-    finiteNumber(slot1.power) +
-    finiteNumber(slot2.power);
+    slot1Estimate.power +
+    (slot2Live ? finiteNumber(slot2.power) : 0);
 
   const supplyVoltage = finiteNumber(
     station.supplyVoltage,

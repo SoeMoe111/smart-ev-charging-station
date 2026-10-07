@@ -80,18 +80,18 @@
       <article class="metric-card">
         <div class="metric-icon">↯</div>
         <div>
-          <small>TOTAL CURRENT</small>
+          <small>ESTIMATED CURRENT</small>
           <strong id="stationCurrent">-- A</strong>
-          <span>Within station limit</span>
+          <span>Slot 1 · 1.5 A charging model</span>
         </div>
       </article>
 
       <article class="metric-card">
         <div class="metric-icon">◉</div>
         <div>
-          <small>ACTIVE POWER</small>
+          <small>ESTIMATED POWER</small>
           <strong id="stationPower">-- W</strong>
-          <span>One relay enabled</span>
+          <span>Voltage × estimated current</span>
         </div>
       </article>
 
@@ -149,10 +149,12 @@
 
         <div class="reading-grid">
           <div><small>VOLTAGE</small><strong id="slot1Voltage">-- V</strong></div>
-          <div><small>CURRENT</small><strong id="slot1Current">-- A</strong></div>
-          <div><small>POWER</small><strong id="slot1Power">-- W</strong></div>
+          <div><small>EST. CURRENT</small><strong id="slot1Current">-- A</strong></div>
+          <div><small>EST. POWER</small><strong id="slot1Power">-- W</strong></div>
           <div><small>TEMP</small><strong id="slot1Temperature">-- °C</strong></div>
         </div>
+
+        <p class="field-hint">Estimated A/W · assumes 1.5 A constant-current charging, tapering near 8.4 V.</p>
 
       </article>
 
@@ -268,9 +270,9 @@
       </article>
 
       <article>
-        <small>CHARGE CURRENT</small>
+        <small>ESTIMATED CHARGE CURRENT</small>
         <strong id="telemetryCurrent">-- A</strong>
-        <span>Charging active</span>
+        <span>1.5 A charging model</span>
       </article>
 
       <article>
@@ -295,14 +297,14 @@
     <p class="eyebrow">400V-CLASS DIGITAL TWIN</p>
     <h1>Projected EV energy meter</h1>
     <p>
-      A transparent engineering projection that maps the low-voltage prototype
+      An estimated engineering projection that maps the low-voltage prototype
       to a 400V-class EV charging model while the physical safety system remains
       controlled only by the real INA219 measurements.
     </p>
 
     <div class="meter-scale-pills" aria-label="Digital twin scale factors">
       <span>VOLTAGE ×50</span>
-      <span>CURRENT ×5</span>
+      <span>ESTIMATED CURRENT ×5</span>
       <span>POWER &amp; ENERGY ×250</span>
     </div>
   </div>
@@ -314,8 +316,8 @@
       <div>
         <b>PROJECTED MODEL — NOT AN ACTUAL UTILITY BILL</b>
         <p>
-          Meter units and cost on this page are shown only for the 400V-class EV model.
-          Actual prototype energy units are intentionally not displayed.
+          Current, power, energy and cost use an assumed 1.5 A charging model.
+          Voltage, relay state and protection come from live station data.
         </p>
       </div>
       <span id="meterSourceState" class="status-tag">WAITING</span>
@@ -327,8 +329,8 @@
           <p class="section-kicker">LIVE DIGITAL TWIN</p>
           <h2>400V-class charging output</h2>
           <p class="meter-console-copy">
-            Live values are derived from Slot 1 using one consistent scale, so
-            projected power always remains equal to voltage × current.
+            Live Slot 1 voltage and estimated charging current use one consistent
+            scale, so projected power always equals voltage × current.
           </p>
         </div>
 
@@ -353,7 +355,7 @@
           <span class="meter-reading-icon">A</span>
           <small>PROJECTED CURRENT</small>
           <strong id="projectedCurrent">0.00 A</strong>
-          <em>Scaled live current</em>
+          <em>Scaled estimated current</em>
         </div>
 
         <div class="ev-meter-reading featured-reading">
@@ -467,7 +469,8 @@
 
     <p class="receipt-disclaimer">
       This receipt is calculated from the transparent 400V-class digital-twin
-      projection. It is a prototype estimate and not an actual utility bill.
+      projection using the assumed charging current. It is a prototype estimate
+      and not an actual utility bill.
     </p>
 
     <footer class="receipt-actions">
@@ -1156,7 +1159,7 @@
 
 </footer>
 
-<script type="module" src="app.js?v=20261007-stability-v17"></script>
+<script type="module" src="app.js?v=20261007-estimated-v18"></script>
 
 </body>
 </html>
