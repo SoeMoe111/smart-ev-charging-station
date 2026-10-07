@@ -20,11 +20,11 @@ export const firebaseConfigured = [
 
 // Load the project-specific RFID owner-only layer after the main module graph.
 setTimeout(() => {
-  import("./rfid-owner-mode.js?v=20261006-fast-live-v16").catch(error => {
+  import("./rfid-owner-mode.js?v=20261007-stability-v17").catch(error => {
     console.error("RFID owner mode could not be loaded", error);
   });
 
-  import("./rfid-hotfix.js?v=20261006-fast-live-v16").catch(error => {
+  import("./rfid-hotfix.js?v=20261007-stability-v17").catch(error => {
     console.error("RFID hotfix could not be loaded", error);
   });
 }, 0);
