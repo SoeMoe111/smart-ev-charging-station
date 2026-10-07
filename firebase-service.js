@@ -1,4 +1,4 @@
-import { firebaseConfigured } from "./firebase-config.js?v=20261006-fast-live-v16";
+import { firebaseConfigured } from "./firebase-config.js?v=20261007-stability-v17";
 
 const FIREBASE_RELAY_ORIGIN =
   "https://smart-ev-firebase-relay.ldqr-501416499.chatgpt.site";
