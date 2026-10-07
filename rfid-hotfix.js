@@ -46,7 +46,7 @@ function clearStaleRfidUi() {
 }
 
 async function bootRfidHotfix() {
-  const service = await import("./firebase-service.js?v=20261006-fast-live-v16");
+  const service = await import("./firebase-service.js?v=20261007-stability-v17");
 
   const startStationWatch = () => {
     try {
