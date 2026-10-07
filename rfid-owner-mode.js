@@ -193,7 +193,7 @@ function watchDetectedCard() {
 }
 
 async function installOwnerOnlyBehavior() {
-  const service = await import("./firebase-service.js?v=20261006-fast-live-v16");
+  const service = await import("./firebase-service.js?v=20261007-stability-v17");
 
   document.addEventListener("submit", async event => {
     const form = event.target;
