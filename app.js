@@ -13,7 +13,7 @@ import {
   deleteAllRfidUsers,
   subscribeStation,
   normalizeUid
-} from "./firebase-service.js?v=20261006-fast-live-v16";
+} from "./firebase-service.js?v=20261007-stability-v17";
 
 // ============================================
 // SMART EV CHARGING STATION - FIREBASE APP
@@ -25,6 +25,8 @@ let adminMode = false;
 let unsubscribeRfidUsers = null;
 let latestDetectedUid = "";
 let latestDetectedTimestamp = 0;
+let lastBookingAutoFillScanKey = "";
+let bookingUidEditedByUser = false;
 
 // ---------- PAGE NAVIGATION ----------
 const navTabs = [...document.querySelectorAll(".nav-tab")];
@@ -552,10 +554,10 @@ function setBookingCardUid(preferredUid = "") {
   applyBookingCardInput();
 }
 
-bookingCard?.addEventListener(
-  "input",
-  applyBookingCardInput
-);
+bookingCard?.addEventListener("input", () => {
+  bookingUidEditedByUser = true;
+  applyBookingCardInput();
+});
 
 bookingCard?.addEventListener(
   "blur",
@@ -902,6 +904,7 @@ if (bookingForm) {
           : `Booking confirmed locally for ${selectedCard.name}.`;
 
         bookingForm.reset();
+        bookingUidEditedByUser = false;
         setBookingCardUid();
       } catch (error) {
         console.error(error);
@@ -1226,7 +1229,18 @@ function applyRfidStationState(rfid = {}) {
       active: true
     };
 
-    setBookingCardUid(uid);
+    const scanKey = `${uid}|${timestamp}`;
+
+    // A newly scanned card may assist an untouched booking form once. Polling
+    // the same Firebase record must never overwrite a UID the user clears or
+    // types manually.
+    if (scanKey !== lastBookingAutoFillScanKey) {
+      lastBookingAutoFillScanKey = scanKey;
+
+      if (!bookingUidEditedByUser) {
+        setBookingCardUid(uid);
+      }
+    }
   }
 
   updateRfidEnrollmentUi();
